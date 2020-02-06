@@ -9,11 +9,21 @@ import (
 
 func main() {
 
-	numPoints := 100
+	numPoints := 24
 
 	series := gochart.NewSeries(
-		gochart.GenTestTextLabels(numPoints),
+		nil,
 		append(gochart.GenTestDataReversed(numPoints/2), gochart.GenTestData(numPoints/2)...),
+	)
+
+	series2 := gochart.NewSeries(
+		nil,
+		append(gochart.GenTestData(numPoints/2), gochart.GenTestDataReversed(numPoints/2)...),
+	)
+
+	series3 := gochart.NewSeries(
+		nil,
+		gochart.GenTestDataFlat(numPoints, 50),
 	)
 
 	canvas := gg.NewContext(640, 400)
@@ -23,8 +33,10 @@ func main() {
 
 	layout := gochart.NewLayout(
 		gochart.NewVerticalAxis(series),
-		gochart.NewHorizontalAxis(series, 0),
-		gochart.NewPoints(series,0),
+		gochart.NewHorizontalAxis(series, 10),
+		gochart.NewBars(series, 10),
+		gochart.NewPoints(series3, 10),
+		gochart.NewLines(series2, 10),
 	)
 
 	layout.Render(canvas, gochart.BoundingBoxFromCanvas(canvas))

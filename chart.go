@@ -8,8 +8,13 @@ import (
 	"github.com/fogleman/gg"
 )
 
-const defaultMargin float64 = 4
+const defaultMargin float64 = 8
 const defaultTickSize float64 = 4
+
+type Label struct {
+	Value string
+	Tick  int
+}
 
 type BoundingBox struct {
 	X float64
@@ -72,9 +77,9 @@ func (s *Series) Xs() []string {
 
 func (s *Series) NumTicksX() int {
 	if s.x == nil {
-		return len(s.y)
+		return len(s.y) + 1
 	}
-	return len(s.x)
+	return len(s.x) + 1
 }
 
 func (s *Series) NumTicksY() int {
@@ -89,57 +94,49 @@ func (s *Series) YPos(i int, b BoundingBox, zeroMin bool) float64 {
 	if zeroMin {
 		min = 0
 	}
-	return normalizeToRange(s.Y(i), min, max, b.Y, b.H)
+	return normalizeToRange(s.Y(i), min, max, b.RelY(0), b.H)
 }
 
-func (s *Series) XPos(i int, b BoundingBox) float64 {
+func (s *Series) XPos(i int, b BoundingBox, offset float64) float64 {
 	if i > s.NumTicksX() {
-		return b.RelX(b.W)
+		return b.RelX(b.W) + offset
 	}
-	return normalizeToRange(float64(i), 0, float64(s.NumTicksX()-1), b.X, b.W)
-}
-
-func (s *Series) XPosByValue(val string, b BoundingBox) float64 {
-	for k, v := range s.XLabels() {
-		if val == v {
-			return s.XPos(k, b)
-		}
-	}
-	return b.RelX(b.W)
+	return normalizeToRange(float64(i), 0, float64(s.NumTicksX()-1), b.RelX(0), b.W) + offset
 }
 
 func (s *Series) YMinMax() (float64, float64) {
 	return floatRange(s.Ys())
 }
 
-func (s *Series) YLabels() []string {
-	labels := make([]string, s.NumTicksY()+1)
+func (s *Series) YLabels() []Label {
+	labels := make([]Label, s.NumTicksY()+1)
 	_, max := s.YMinMax()
 	for i := 0; i <= s.NumTicksY(); i++ {
-		labels[i] = fmt.Sprintf("%0.8f", (max/float64(s.NumTicksY()))*float64(i))
+		labels[i] = Label{fmt.Sprintf("%0.2f", (max/float64(s.NumTicksY()))*float64(i)), i}
 	}
 	return labels
 }
 
-func (s *Series) XLabels() []string {
-	labels := make([]string, s.NumTicksX())
+func (s *Series) XLabels() []Label {
+	labels := make([]Label, s.NumTicksX())
 	for i := 0; i < s.NumTicksX(); i++ {
 		if s.x == nil {
-			labels[i] = fmt.Sprintf("%d", i)
+			labels[i] = Label{fmt.Sprintf("%d", i), i}
 		} else {
-			labels[i] = s.X(i)
+			labels[i] = Label{s.X(i), i}
 		}
 	}
 	return labels
 }
 
-func NewPoints(s *Series) *Points {
-	return &Points{s: s, pointSize: 2}
+func NewPoints(s *Series, xOffset float64) *Points {
+	return &Points{s: s, pointSize: 2, xOffset: xOffset}
 }
 
 type Points struct {
 	s         *Series
 	pointSize float64
+	xOffset   float64
 }
 
 func (c *Points) Render(canvas *gg.Context, b BoundingBox) error {
@@ -162,9 +159,9 @@ func (c *Points) Render(canvas *gg.Context, b BoundingBox) error {
 
 	for i := range c.s.Ys() {
 		canvas.Push()
-		canvas.SetColor(color.RGBA{255, 0, 0, 255})
+		canvas.SetColor(color.RGBA{0, 0, 0, 255})
 		canvas.DrawCircle(
-			c.s.XPos(i, b),
+			c.s.XPos(i, b, c.xOffset),
 			c.s.YPos(i, b, true),
 			c.pointSize,
 		)
@@ -179,50 +176,137 @@ func (c *Points) Data() *Series {
 	return c.s
 }
 
-func NewLayout(chart Element, yAxis Element, xAxis Element) Element {
-	return &Layout{chart: chart, yAxis: yAxis, xAxis: xAxis}
+func NewLines(s *Series, xOffset float64) *Lines {
+	return &Lines{s: s, pointSize: 2, xOffset: xOffset}
 }
 
-type Layout struct {
-	chart Element
-	yAxis Element
-	xAxis Element
+type Lines struct {
+	s         *Series
+	pointSize float64
+	xOffset   float64
 }
 
-func (l *Layout) Data() *Series {
-	return l.chart.Data()
+func (c *Lines) Render(canvas *gg.Context, b BoundingBox) error {
+
+	canvas.Push()
+	defer canvas.Pop()
+
+	// setup canvas
+	canvas.InvertY()
+
+	canvas.SetColor(color.RGBA{0, 0, 255, 255})
+
+	points := c.s.Ys()
+
+	for i := range points {
+
+		nextPoint := minInt(i+1, len(points)-1)
+
+		canvas.DrawLine(
+			c.s.XPos(i, b, c.xOffset),
+			c.s.YPos(i, b, true),
+			c.s.XPos(nextPoint, b, c.xOffset),
+			c.s.YPos(nextPoint, b, true),
+		)
+		canvas.Stroke()
+	}
+
+	return nil
 }
 
-func (l *Layout) Render(canvas *gg.Context, b BoundingBox) error {
+func (c *Lines) Data() *Series {
+	return c.s
+}
 
-	verticalAxisSize := 60.0
-	horizontalAxisSize := 30.0
+func NewBars(s *Series, xOffset float64) *Bars {
+	return &Bars{s: s, maxBarWidth: 20, xOffset: xOffset}
+}
+
+type Bars struct {
+	s           *Series
+	maxBarWidth float64
+	xOffset     float64
+}
+
+func (c *Bars) Render(canvas *gg.Context, b BoundingBox) error {
+
+	canvas.Push()
+	defer canvas.Pop()
+
+	// setup canvas
+	canvas.InvertY()
+
+	maxBarWidth := math.Max(math.Min(b.W/float64(c.s.NumTicksX()), c.maxBarWidth)-defaultMargin, 1)
+
+	canvas.SetColor(color.RGBA{255, 128, 255, 255})
+	for i := range c.s.Ys() {
+		canvas.DrawRectangle(
+			c.s.XPos(i, b, c.xOffset)-maxBarWidth/2,
+			b.RelY(0),
+			maxBarWidth,
+			c.s.YPos(i, b, true)-b.RelY(0),
+		)
+	}
+	canvas.Fill()
+
+	return nil
+}
+
+func (c *Bars) Data() *Series {
+	return c.s
+}
+
+func NewLayout(yAxis Element, xAxis Element, charts ...Element) Element {
+	return &FluidLayout{charts: charts, yAxis: yAxis, xAxis: xAxis}
+}
+
+// FluidLayout will resize axis to fit data.
+type FluidLayout struct {
+	charts []Element
+	yAxis  Element
+	xAxis  Element
+}
+
+func (l *FluidLayout) Data() *Series {
+	return l.yAxis.Data()
+}
+
+func (l *FluidLayout) Render(canvas *gg.Context, b BoundingBox) error {
+
+	_, maxXLabelH := widestLabelSize(canvas, l.Data().XLabels())
+	maxYLabelW, _ := widestLabelSize(canvas, l.Data().YLabels())
+
+	yAxisWidth := maxYLabelW + defaultMargin
+	xAxisHeight := maxXLabelH + defaultMargin
 
 	chartPosition := BoundingBox{
-		X: b.X + verticalAxisSize,
-		Y: b.Y + horizontalAxisSize,
-		W: b.W - verticalAxisSize,
-		H: b.H - horizontalAxisSize,
+		X: b.X + yAxisWidth,
+		Y: b.Y + xAxisHeight,
+		W: b.W - yAxisWidth,
+		H: b.H - xAxisHeight,
 	}
-	if err := l.chart.Render(canvas, chartPosition); err != nil {
-		return err
+
+	for _, ch := range l.charts {
+		if err := ch.Render(canvas, chartPosition); err != nil {
+			return err
+		}
 	}
 
 	leftAxisPosition := BoundingBox{
 		X: b.X,
 		Y: b.Y,
-		W: verticalAxisSize,
-		H: b.H - horizontalAxisSize,
+		W: yAxisWidth,
+		H: b.H - xAxisHeight,
 	}
 	if err := l.yAxis.Render(canvas, leftAxisPosition); err != nil {
 		return err
 	}
 
 	bottomAxisPosition := BoundingBox{
-		X: b.RelX(0) + verticalAxisSize,
-		Y: b.RelY(b.H) - horizontalAxisSize,
-		W: b.W - verticalAxisSize,
-		H: horizontalAxisSize,
+		X: b.RelX(0) + yAxisWidth,
+		Y: b.RelY(b.H) - xAxisHeight,
+		W: b.W - yAxisWidth,
+		H: xAxisHeight,
 	}
 	if err := l.xAxis.Render(canvas, bottomAxisPosition); err != nil {
 		return err
@@ -264,7 +348,7 @@ func (a *VerticalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 		linePos := b.RelY(b.H - (spacing * float64(i)))
 
 		canvas.DrawStringWrapped(
-			truncateStringToMaxSize(canvas, label, b.W-defaultMargin),
+			truncateStringToMaxSize(canvas, label.Value, b.W),
 			b.RelX(0),
 			linePos,
 			0,
@@ -286,12 +370,13 @@ func (a *VerticalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func NewHorizontalAxis(s *Series) Element {
-	return &HorizontalAxis{s: s}
+func NewHorizontalAxis(s *Series, xOffset float64) Element {
+	return &HorizontalAxis{s: s, xOffset: xOffset}
 }
 
 type HorizontalAxis struct {
-	s *Series
+	s       *Series
+	xOffset float64
 }
 
 func (a *HorizontalAxis) Data() *Series {
@@ -303,22 +388,23 @@ func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.Push()
 	defer canvas.Pop()
 
-	canvas.SetColor(color.RGBA{0, 0, 0, 255})
+	canvas.SetColor(color.RGBA{A: 255})
 	canvas.SetLineWidth(2)
 
 	//debugging
-	//canvas.DrawRectangle(b.X, b.Y, b.W, b.H)
+	//canvas.DrawRectangle(b.RelX(0), b.RelY(0), b.W, b.H)
 	//canvas.Stroke()
 
 	// horizontal line
-	canvas.DrawLine(b.RelX(0), b.RelY(0), b.RelX(b.W), b.RelY(0))
+	canvas.DrawLine(b.RelX(0), b.RelY(0), b.RelX(b.W)+a.xOffset, b.RelY(0))
 
-	labels := reduceNumStringsToFitSpace(canvas, a.s.XLabels(), b.W)
-	spacing := b.W / float64(len(labels))
+	labels := reduceNumLabelsToFitSpace(canvas, a.s.XLabels(), b.W)
+	totalLabelsWidth := totalLabelsWidth(canvas, labels, defaultMargin*2)
+	spacing := totalLabelsWidth / float64(len(labels))
 
 	for _, label := range labels {
 
-		linePos := a.s.XPosByValue(label, b)
+		linePos := a.s.XPos(label.Tick, b, a.xOffset)
 
 		canvas.DrawLine(
 			linePos,
@@ -327,19 +413,19 @@ func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 			b.RelY(0)+defaultTickSize,
 		)
 
-		fmt.Printf("%s: %0.2f\n", label, linePos)
+		fmt.Printf("%s: %0.2f, %0.2f\n", label.Value, linePos, spacing)
 
 		//debugging
 		//canvas.DrawRectangle(linePos-spacing/2, b.RelY(0)+defaultTickSize+defaultMargin, spacing, spacing)
 
 		canvas.DrawStringWrapped(
-			label,
+			label.Value,
 			linePos,
 			b.RelY(0)+defaultTickSize+defaultMargin,
 			0.5,
-			0.5,
-			spacing,
 			0,
+			spacing,
+			1,
 			gg.AlignCenter,
 		)
 	}
@@ -376,14 +462,6 @@ func normalizeToRange(val, valMin, valMax, scaleMin, scaleMax float64) float64 {
 	return (((val - valMin) / valMax) * scaleMax) + scaleMin
 }
 
-func GenTestData(num int) []float64 {
-	values := make([]float64, num)
-	for i := 0; i < num; i++ {
-		values[i] = float64(i) * float64(i)
-	}
-	return values
-}
-
 func truncateStringToMaxSize(canvas *gg.Context, s string, size float64) string {
 	for {
 		if len([]rune(s)) < 1 {
@@ -398,19 +476,19 @@ func truncateStringToMaxSize(canvas *gg.Context, s string, size float64) string 
 	}
 }
 
-func reduceNumStringsToFitSpace(canvas *gg.Context, ss []string, size float64) []string {
+func reduceNumLabelsToFitSpace(canvas *gg.Context, ss []Label, size float64) []Label {
 	for {
 		// actually none fit
 		if len(ss) == 0 {
 			return ss
 		}
-		if totalStringWidth(canvas, ss, defaultMargin * 2) <= size {
+		if totalLabelsWidth(canvas, ss, defaultMargin*2) <= size {
 			return ss
 		}
-		reduced := []string{}
+
+		reduced := []Label{}
 		for k, s := range ss {
-			//todo: I think the first and last values should always be in the set
-			if k%2 != 0 {
+			if k%2 == 0 {
 				reduced = append(reduced, s)
 			}
 		}
@@ -418,22 +496,36 @@ func reduceNumStringsToFitSpace(canvas *gg.Context, ss []string, size float64) [
 	}
 }
 
-func totalStringWidth(canvas *gg.Context, ss []string, margins float64) float64 {
+func totalLabelsWidth(canvas *gg.Context, ss []Label, margins float64) float64 {
 	total := 0.0
 	for _, v := range ss {
-		w, _ := canvas.MeasureString(v)
+		w, _ := canvas.MeasureString(v.Value)
 		total += w + margins
 	}
 	return total
 }
 
-func widestStringSize(canvas *gg.Context, ss []string) (w float64, h float64) {
+func widestLabelSize(canvas *gg.Context, ss []Label) (w float64, h float64) {
 	for _, s := range ss {
-		ww, hh := canvas.MeasureString(s)
+		ww, hh := canvas.MeasureString(s.Value)
 		if ww > w {
 			w = ww
 			h = hh
 		}
 	}
 	return
+}
+
+func minInt(a, b int) int {
+	if a > b {
+		return b
+	}
+	return a
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
