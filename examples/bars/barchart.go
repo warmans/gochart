@@ -21,6 +21,9 @@ func main() {
 		append(gochart.GenTestData(numPoints/2), gochart.GenTestDataReversed(numPoints/2)...),
 	)
 
+
+	// fixme: this doesn't work because the Y scaling gets messed up. Y is scaled based
+	// on a different series.
 	series3 := gochart.NewSeries(
 		nil,
 		gochart.GenTestDataFlat(numPoints, 50),
