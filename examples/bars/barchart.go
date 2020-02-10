@@ -9,7 +9,7 @@ import (
 
 func main() {
 
-	numPoints := 24
+	numPoints := 20
 
 	series := gochart.NewSeries(
 		nil,
@@ -21,11 +21,9 @@ func main() {
 		append(gochart.GenTestData(numPoints/2), gochart.GenTestDataReversed(numPoints/2)...),
 	)
 
-	// fixme: this doesn't work because the Y scaling gets messed up. Y is scaled based
-	// on a different series.
 	series3 := gochart.NewSeries(
 		nil,
-		gochart.GenTestDataFlat(numPoints, 50),
+		gochart.GenTestDataFlat(numPoints, 48.60),
 	)
 
 	canvas := gg.NewContext(640, 400)
@@ -33,14 +31,16 @@ func main() {
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
-	scale := gochart.NewAutomaticVerticalScale(series, series2, series3)
+	yScale := gochart.NewVerticalScale(series, series2, series3)
+	xScale := gochart.NewHorizontalScale(series, 10)
 
 	layout := gochart.NewLayout(
-		gochart.NewVerticalAxis(scale),
-		gochart.NewHorizontalAxis(series, 10),
-		gochart.NewBars(scale, series, 10),
-		gochart.NewPoints(scale, series3, 10),
-		gochart.NewLines(scale, series2, 10),
+		gochart.NewVerticalAxis(yScale),
+		gochart.NewHorizontalAxis(series, xScale),
+
+		gochart.NewBars(yScale, xScale, series),
+		gochart.NewPoints(yScale, xScale, series3),
+		gochart.NewLines(yScale, xScale, series2),
 	)
 
 	layout.Render(canvas, gochart.BoundingBoxFromCanvas(canvas))
