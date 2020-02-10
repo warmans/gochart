@@ -21,7 +21,6 @@ func main() {
 		append(gochart.GenTestData(numPoints/2), gochart.GenTestDataReversed(numPoints/2)...),
 	)
 
-
 	// fixme: this doesn't work because the Y scaling gets messed up. Y is scaled based
 	// on a different series.
 	series3 := gochart.NewSeries(
@@ -34,12 +33,14 @@ func main() {
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
+	scale := gochart.NewAutomaticVerticalScale(series, series2, series3)
+
 	layout := gochart.NewLayout(
-		gochart.NewVerticalAxis(series),
+		gochart.NewVerticalAxis(scale),
 		gochart.NewHorizontalAxis(series, 10),
-		gochart.NewBars(series, 10),
-		gochart.NewPoints(series3, 10),
-		gochart.NewLines(series2, 10),
+		gochart.NewBars(scale, series, 10),
+		gochart.NewPoints(scale, series3, 10),
+		gochart.NewLines(scale, series2, 10),
 	)
 
 	layout.Render(canvas, gochart.BoundingBoxFromCanvas(canvas))
