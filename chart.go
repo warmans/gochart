@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/fogleman/gg"
 )
 
@@ -32,7 +33,7 @@ func (b BoundingBox) MapX(min, max, value float64) float64 {
 // MapY takes the given min/max and maps them to the box then returns the valu Ye position within that scale.
 // E.g. val:2 min:1 max: 3 of a 100x100 box will return 50
 func (b BoundingBox) MapY(min, max, value float64) float64 {
-	return normalizeToRange(value, min, max, b.RelY(0), b.H)
+	return b.RelY(b.H) - normalizeToRange(value, min, max, 0, b.H)
 }
 
 // RelX is the relative position within the canvas i.e. 0 is the far left of the box, not the far left
@@ -47,9 +48,20 @@ func (b BoundingBox) RelY(pos float64) float64 {
 	return b.Y + pos
 }
 
+func (b BoundingBox) DebugRender(canvas *gg.Context) {
+	canvas.Push()
+	defer canvas.Pop()
+	canvas.SetColor(color.RGBA{R: 0, G: 0, B: 0, A: 128})
+	canvas.DrawRectangle(b.RelX(0), b.RelY(0), b.W, b.H)
+	canvas.DrawString(fmt.Sprintf("x: %0.0f y: %0.0f w: %0.0f h: %0.0f", b.X, b.Y, b.W, b.H), b.X, b.Y+10)
+	canvas.Stroke()
+}
+
 type VisualSeries interface {
-	Data() *Series
 	Render(canvas *gg.Context, b BoundingBox) error
+	ReplaceSeries(fn func(s *Series) *Series)
+	ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale)
+	VerticalScale() VerticalScale
 }
 
 func NewSeries(x []string, y []float64) *Series {
@@ -83,7 +95,49 @@ func (s *Series) Xs() []string {
 	return s.x
 }
 
-func NewPoints(yScale VerticalScale, xScale HorizontalScale, s *Series) *Points {
+func (s *Series) AdditiveMerge(add *Series) *Series {
+	merged := &Series{
+		x: make([]string, len(s.Ys())),
+		y: make([]float64, len(s.Ys())),
+	}
+	for k := range s.Ys() {
+		merged.x[k] = s.X(k)
+		merged.y[k] = s.Y(k)
+	}
+	if add != nil {
+		for k := range merged.Ys() {
+			merged.y[k] += add.Y(k)
+		}
+	}
+	return merged
+}
+
+func StackedVisualSeries(vs ...VisualSeries) ([]VisualSeries, VerticalScale) {
+	stacked := make([]VisualSeries, len(vs))
+
+	var originalSeries []*Series
+	var lastSeries *Series
+	for k := range vs {
+		vs[k].ReplaceSeries(func(s *Series) *Series {
+			originalSeries = append(originalSeries, s)
+			merged := s.AdditiveMerge(lastSeries)
+			lastSeries = merged
+			return merged
+		})
+		stacked[(len(vs)-1)-k] = vs[k]
+	}
+
+	spew.Dump(originalSeries)
+	stackedScale := NewStackedVerticalScale(originalSeries...)
+	for k := range stacked {
+		stacked[k].ReplaceVerticalScale(func(s VerticalScale) VerticalScale {
+			return stackedScale
+		})
+	}
+	return stacked, stackedScale
+}
+
+func NewPoints(yScale VerticalScale, xScale HorizontalScale, s *Series) VisualSeries {
 	return &Points{
 		s:         s,
 		pointSize: 2,
@@ -104,39 +158,32 @@ func (c *Points) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.Push()
 	defer canvas.Pop()
 
-	// setup canvas
-	canvas.InvertY()
-
-	//draw data area
-	//canvas.SetColor(color.RGBA{
-	//	R: 200,
-	//	G: 200,
-	//	B: 200,
-	//	A: 255,
-	//})
-	//canvas.DrawRectangle(b.X, b.Y, b.W, b.H)
-	//canvas.Fill()
-
 	for i, v := range c.s.Ys() {
-		canvas.Push()
-		canvas.SetColor(color.RGBA{0, 0, 0, 255})
+		canvas.SetColor(RandomColor())
 		canvas.DrawCircle(
 			c.xScale.Position(i, b),
 			c.yScale.Position(v, b),
 			c.pointSize,
 		)
-		canvas.Fill()
-		canvas.Pop()
 	}
+	canvas.Fill()
 
 	return nil
 }
 
-func (c *Points) Data() *Series {
-	return c.s
+func (c *Points) ReplaceSeries(fn func(s *Series) *Series) {
+	c.s = fn(c.s)
 }
 
-func NewLines(yScale VerticalScale, xScale HorizontalScale, s *Series) *Lines {
+func (c *Points) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
+	c.yScale = fn(c.VerticalScale())
+}
+
+func (c *Points) VerticalScale() VerticalScale {
+	return c.yScale
+}
+
+func NewLines(yScale VerticalScale, xScale HorizontalScale, s *Series) VisualSeries {
 	return &Lines{yScale: yScale, xScale: xScale, s: s, pointSize: 2}
 }
 
@@ -152,10 +199,7 @@ func (c *Lines) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.Push()
 	defer canvas.Pop()
 
-	// setup canvas
-	canvas.InvertY()
-
-	canvas.SetColor(color.RGBA{0, 0, 255, 255})
+	canvas.SetColor(RandomColor())
 
 	points := c.s.Ys()
 
@@ -163,7 +207,8 @@ func (c *Lines) Render(canvas *gg.Context, b BoundingBox) error {
 	for i, v := range points {
 
 		// line is drawn from each point to the previous one, so the first one cannot be drawn
-		if i == 0 {
+		if i < 1 {
+			previousPoint = v
 			continue
 		}
 
@@ -181,11 +226,19 @@ func (c *Lines) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func (c *Lines) Data() *Series {
-	return c.s
+func (c *Lines) ReplaceSeries(fn func(s *Series) *Series) {
+	c.s = fn(c.s)
 }
 
-func NewBars(yScale VerticalScale, xScale HorizontalScale, s *Series) *Bars {
+func (c *Lines) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
+	c.yScale = fn(c.VerticalScale())
+}
+
+func (c *Lines) VerticalScale() VerticalScale {
+	return c.yScale
+}
+
+func NewBars(yScale VerticalScale, xScale HorizontalScale, s *Series) VisualSeries {
 	return &Bars{yScale: yScale, xScale: xScale, s: s, maxBarWidth: 20}
 }
 
@@ -201,18 +254,15 @@ func (c *Bars) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.Push()
 	defer canvas.Pop()
 
-	// setup canvas
-	canvas.InvertY()
-
 	maxBarWidth := math.Max(math.Min(b.W/float64(c.xScale.NumTicks()), c.maxBarWidth)-defaultMargin, 1)
 
-	canvas.SetColor(color.RGBA{255, 128, 255, 255})
+	canvas.SetColor(RandomColor())
 	for i, v := range c.s.Ys() {
 		canvas.DrawRectangle(
 			c.xScale.Position(i, b)-maxBarWidth/2,
-			b.RelY(0),
+			b.RelY(b.H),
 			maxBarWidth,
-			c.yScale.Position(v, b)-b.RelY(0),
+			0-(c.yScale.Position(0, b)-c.yScale.Position(v, b)),
 		)
 	}
 	canvas.Fill()
@@ -220,8 +270,16 @@ func (c *Bars) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func (c *Bars) Data() *Series {
-	return c.s
+func (c *Bars) ReplaceSeries(fn func(s *Series) *Series) {
+	c.s = fn(c.s)
+}
+
+func (c *Bars) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
+	c.yScale = fn(c.VerticalScale())
+}
+
+func (c *Bars) VerticalScale() VerticalScale {
+	return c.yScale
 }
 
 func NewLayout(yAxis *VerticalAxis, xAxis *HorizontalAxis, charts ...VisualSeries) *FluidLayout {
@@ -235,7 +293,9 @@ type FluidLayout struct {
 	xAxis  *HorizontalAxis
 }
 
-func (l *FluidLayout) Render(canvas *gg.Context, b BoundingBox) error {
+func (l *FluidLayout) Render(canvas *gg.Context, container BoundingBox) error {
+
+	//container.DebugRender(canvas)
 
 	//todo multiple X axis
 	_, maxXLabelH := widestLabelSize(canvas, l.xAxis.Scale().Labels())
@@ -245,11 +305,13 @@ func (l *FluidLayout) Render(canvas *gg.Context, b BoundingBox) error {
 	xAxisHeight := maxXLabelH + defaultMargin
 
 	chartPosition := BoundingBox{
-		X: b.X + yAxisWidth,
-		Y: b.Y + xAxisHeight,
-		W: b.W - yAxisWidth,
-		H: b.H - xAxisHeight,
+		X: container.RelX(0) + yAxisWidth,
+		Y: container.RelY(0),
+		W: container.W - yAxisWidth,
+		H: container.H - xAxisHeight,
 	}
+
+	//chartPosition.DebugRender(canvas)
 
 	for _, ch := range l.charts {
 		if err := ch.Render(canvas, chartPosition); err != nil {
@@ -258,24 +320,28 @@ func (l *FluidLayout) Render(canvas *gg.Context, b BoundingBox) error {
 	}
 
 	leftAxisPosition := BoundingBox{
-		X: b.X,
-		Y: b.Y,
+		X: container.RelX(0),
+		Y: container.RelY(0),
 		W: yAxisWidth,
-		H: b.H - xAxisHeight,
+		H: container.H - xAxisHeight,
 	}
 	if err := l.yAxis.Render(canvas, leftAxisPosition); err != nil {
 		return err
 	}
 
+	//leftAxisPosition.DebugRender(canvas)
+
 	bottomAxisPosition := BoundingBox{
-		X: b.RelX(0) + yAxisWidth,
-		Y: b.RelY(b.H) - xAxisHeight,
-		W: b.W - yAxisWidth,
+		X: container.RelX(0) + yAxisWidth,
+		Y: container.RelY(container.H) - xAxisHeight,
+		W: container.W - yAxisWidth,
 		H: xAxisHeight,
 	}
 	if err := l.xAxis.Render(canvas, bottomAxisPosition); err != nil {
 		return err
 	}
+
+	//bottomAxisPosition.DebugRender(canvas)
 
 	return nil
 }
@@ -324,33 +390,32 @@ func (s *StdHorizontalScale) Labels() []Label {
 
 func (s *StdHorizontalScale) Position(i int, b BoundingBox) float64 {
 	if i > s.NumTicks() {
-		return b.RelX(b.W) + s.offset
+		return b.RelX(b.W-s.offset) + s.offset
 	}
-	return normalizeToRange(float64(i), 0, float64(s.NumTicks()-1), b.RelX(0), b.W) + s.offset
+	return normalizeToRange(float64(i), 0, float64(s.NumTicks()-1), b.RelX(0), b.W-s.offset) + s.offset
 }
 
 func (s *StdHorizontalScale) Offset() float64 {
 	return s.offset
 }
 
-func NewVerticalScale(series ...*Series) *AutomaticVerticalScale {
-	return &AutomaticVerticalScale{d: series}
+func NewVerticalScale(series ...*Series) *StdVerticalScale {
+	return &StdVerticalScale{d: series}
 }
 
-// reduce
-type AutomaticVerticalScale struct {
+type StdVerticalScale struct {
 	d []*Series
 }
 
-func (r *AutomaticVerticalScale) MinMax() (float64, float64) {
+func (r *StdVerticalScale) MinMax() (float64, float64) {
 	return floatsRange(allYData(r.d))
 }
 
-func (r *AutomaticVerticalScale) NumTicks() int {
+func (r *StdVerticalScale) NumTicks() int {
 	return 10 //todo: should scale based on the canvas size
 }
 
-func (r *AutomaticVerticalScale) Labels() []Label {
+func (r *StdVerticalScale) Labels() []Label {
 	labels := make([]Label, r.NumTicks()+1)
 	_, max := r.MinMax()
 	for i := 0; i <= r.NumTicks(); i++ {
@@ -359,8 +424,40 @@ func (r *AutomaticVerticalScale) Labels() []Label {
 	return labels
 }
 
-func (r *AutomaticVerticalScale) Position(v float64, b BoundingBox) float64 {
+func (r *StdVerticalScale) Position(v float64, b BoundingBox) float64 {
 	min, max := r.MinMax()
+	return b.MapY(min, max, v)
+}
+
+func NewStackedVerticalScale(series ...*Series) VerticalScale {
+	return &StackedVerticalScale{d: series}
+}
+
+type StackedVerticalScale struct {
+	d []*Series
+}
+
+func (s *StackedVerticalScale) NumTicks() int {
+	return 10
+}
+
+func (s *StackedVerticalScale) Labels() []Label {
+	labels := make([]Label, s.NumTicks()+1)
+	_, max := s.MinMax()
+	for i := 0; i <= s.NumTicks(); i++ {
+		labels[i] = Label{fmt.Sprintf("%0.2f", (max/float64(s.NumTicks()))*float64(i)), i}
+	}
+	return labels
+}
+
+func (s *StackedVerticalScale) MinMax() (float64, float64) {
+	min, _ := floatsRange(allYData(s.d))
+	_, max := floatRange(additiveFloatMerge(allYData(s.d)))
+	return min, max
+}
+
+func (s *StackedVerticalScale) Position(v float64, b BoundingBox) float64 {
+	min, max := s.MinMax()
 	return b.MapY(min, max, v)
 }
 
@@ -391,10 +488,12 @@ func (a *VerticalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	// vertical line
 	canvas.DrawLine(b.RelX(b.W), b.RelY(0), b.RelX(b.W), b.RelY(b.H))
 
+	_, max := a.scale.MinMax()
+
 	for i, label := range a.scale.Labels() {
 
-		spacing := b.H / float64(a.scale.NumTicks())
-		linePos := b.RelY(b.H - (spacing * float64(i)))
+		spacing := max / float64(a.scale.NumTicks())
+		linePos := a.scale.Position(spacing*float64(i), b)
 
 		canvas.DrawStringWrapped(
 			truncateStringToMaxSize(canvas, label.Value, b.W),
@@ -444,12 +543,8 @@ func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.SetColor(color.RGBA{A: 255})
 	canvas.SetLineWidth(2)
 
-	//debugging
-	//canvas.DrawRectangle(b.RelX(0), b.RelY(0), b.W, b.H)
-	//canvas.Stroke()
-
 	// horizontal line
-	canvas.DrawLine(b.RelX(0), b.RelY(0), b.RelX(b.W)+a.xScale.Offset(), b.RelY(0))
+	canvas.DrawLine(b.RelX(0), b.RelY(0), b.RelX(b.W), b.RelY(0))
 
 	labels := reduceNumLabelsToFitSpace(canvas, a.xScale.Labels(), b.W)
 	totalLabelsWidth := totalLabelsWidth(canvas, labels, defaultMargin*2)
@@ -474,7 +569,7 @@ func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 		canvas.DrawStringWrapped(
 			label.Value,
 			linePos,
-			b.RelY(0)+defaultTickSize+defaultMargin,
+			b.RelY(0)+defaultTickSize,
 			0.5,
 			0,
 			spacing,
@@ -488,6 +583,8 @@ func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
+// simply find the min and max numbers in the given
+// slices.
 func floatsRange(vv [][]float64) (float64, float64) {
 	overallMax := 0.0
 	overallMin := math.MaxFloat64
@@ -501,6 +598,20 @@ func floatsRange(vv [][]float64) (float64, float64) {
 		}
 	}
 	return overallMin, overallMax
+}
+
+func additiveFloatMerge(slices [][]float64) []float64 {
+	res := []float64{}
+	for _, sl := range slices {
+		for k, v := range sl {
+			if len(res)-1 < k {
+				res = append(res, v)
+			} else {
+				res[k] += v
+			}
+		}
+	}
+	return res
 }
 
 func floatRange(v []float64) (float64, float64) {

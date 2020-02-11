@@ -9,38 +9,41 @@ import (
 
 func main() {
 
-	numPoints := 20
+	numPoints := 24
 
 	series := gochart.NewSeries(
 		nil,
 		append(gochart.GenTestDataReversed(numPoints/2), gochart.GenTestData(numPoints/2)...),
 	)
 
-	series2 := gochart.NewSeries(
-		nil,
-		append(gochart.GenTestData(numPoints/2), gochart.GenTestDataReversed(numPoints/2)...),
-	)
-
 	series3 := gochart.NewSeries(
 		nil,
-		gochart.GenTestDataFlat(numPoints, 48.60),
+		gochart.GenTestDataFlat(numPoints, 300),
 	)
 
-	canvas := gg.NewContext(640, 400)
+	canvas := gg.NewContext(800, 400)
 	canvas.SetColor(color.White)
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
-	yScale := gochart.NewVerticalScale(series, series2, series3)
 	xScale := gochart.NewHorizontalScale(series, 10)
 
-	layout := gochart.NewLayout(
-		gochart.NewVerticalAxis(yScale),
-		gochart.NewHorizontalAxis(series, xScale),
+	stackedCharts, stackedScale := gochart.StackedVisualSeries(
+		gochart.NewBars(gochart.NewVerticalScale(series), xScale, series),
+		gochart.NewBars(gochart.NewVerticalScale(series), xScale, series),
+		gochart.NewBars(gochart.NewVerticalScale(series), xScale, series),
+		gochart.NewBars(gochart.NewVerticalScale(series), xScale, series),
+		gochart.NewBars(gochart.NewVerticalScale(series), xScale, series),
+	)
 
-		gochart.NewBars(yScale, xScale, series),
-		gochart.NewPoints(yScale, xScale, series3),
-		gochart.NewLines(yScale, xScale, series2),
+	layout := gochart.NewLayout(
+		gochart.NewVerticalAxis(stackedScale),
+		gochart.NewHorizontalAxis(series, xScale),
+		append(
+			stackedCharts,
+			gochart.NewLines(stackedScale, xScale, series),
+			gochart.NewPoints(stackedScale, xScale, series3),
+		)...
 	)
 
 	layout.Render(canvas, gochart.BoundingBoxFromCanvas(canvas))
