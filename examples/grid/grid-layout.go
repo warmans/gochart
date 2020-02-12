@@ -1,24 +1,23 @@
 package main
 
 import (
-	"image/color"
-
 	"github.com/fogleman/gg"
 	"github.com/warmans/gochart"
+	"image/color"
 )
 
 func main() {
 
-	numPoints := 24
+	numPoints := 10
 
 	series := gochart.NewSeries(
 		nil,
 		append(gochart.GenTestDataReversed(numPoints/2), gochart.GenTestData(numPoints/2)...),
 	)
 
-	series3 := gochart.NewSeries(
+	series2 := gochart.NewSeries(
 		nil,
-		gochart.GenTestDataFlat(numPoints, 300),
+		gochart.GenTestDataReversed(numPoints),
 	)
 
 	canvas := gg.NewContext(800, 400)
@@ -26,7 +25,7 @@ func main() {
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
-	xScale := gochart.NewHorizontalScale(series, 10)
+	xScale := gochart.NewHorizontalScale(series, 20)
 
 	stackedCharts, stackedScale := gochart.StackPlots(
 		gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series),
@@ -36,19 +35,33 @@ func main() {
 		gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series),
 	)
 
-	layout := gochart.NewDynamicLayout(
-		gochart.NewVerticalAxis(stackedScale),
-		gochart.NewHorizontalAxis(series, xScale),
-		append(
-			stackedCharts,
-			gochart.NewLinesPlot(stackedScale, xScale, series),
-			gochart.NewPointsPlot(stackedScale, xScale, series3),
-		)...
+	rightScale := gochart.NewVerticalScale(series2)
+
+	linePlot := gochart.NewLinesPlot(rightScale, xScale, series2)
+
+	grid := gochart.New12ColGridLayout(
+		gochart.GridRow{
+			HeightFactor: 0.95,
+			Columns: []gochart.GridColumn{
+				{ColSpan: 1, El: gochart.NewVerticalAxis(stackedScale)},
+				{ColSpan: 10, El: gochart.NewCompositePlot(append(stackedCharts, linePlot)...)},
+				{ColSpan: 1, El: gochart.NewVerticalAxis(rightScale, gochart.MirrorVerticalAxis())},
+			},
+		},
+		gochart.GridRow{
+			HeightFactor: 0.05,
+			Columns: []gochart.GridColumn{
+				{ColSpan: 1},
+				{ColSpan: 10, El: gochart.NewHorizontalAxis(series, xScale)},
+				{ColSpan: 1},
+			},
+		},
 	)
 
-	layout.Render(canvas, gochart.BoundingBoxFromCanvas(canvas))
+	grid.Render(canvas, gochart.BoundingBoxFromCanvas(canvas))
 
 	if err := canvas.SavePNG("./example.png"); err != nil {
 		panic(err)
 	}
+
 }
