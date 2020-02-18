@@ -21,30 +21,26 @@ type VerticalScale interface {
 	Position(v float64, b BoundingBox) float64
 }
 
-func NewHorizontalScale(series *Series, offset float64) *StdHorizontalScale {
+func NewHorizontalScale(series Series, offset float64) *StdHorizontalScale {
 	return &StdHorizontalScale{series: series, offset: offset}
 }
 
 type StdHorizontalScale struct {
-	series *Series
+	series Series
 	offset float64
 }
 
 func (s *StdHorizontalScale) NumTicks() int {
-	if s.series.x == nil {
-		return len(s.series.y) + 1
+	if s.series.Ys() == nil {
+		return len(s.series.Ys())
 	}
-	return len(s.series.x) + 1
+	return len(s.series.Xs())
 }
 
 func (s *StdHorizontalScale) Labels() []Label {
-	labels := make([]Label, s.NumTicks()-1)
-	for i := 0; i < s.NumTicks()-1; i++ {
-		if s.series.x == nil {
-			labels[i] = Label{fmt.Sprintf("%d", i), i}
-		} else {
-			labels[i] = Label{s.series.X(i), i}
-		}
+	labels := make([]Label, s.NumTicks())
+	for i := 0; i < s.NumTicks(); i++ {
+		labels[i] = Label{s.series.X(i), i}
 	}
 	return labels
 }
@@ -60,21 +56,24 @@ func (s *StdHorizontalScale) Position(i int, b BoundingBox) float64 {
 		return b.RelX(b.W - s.offset)
 	}
 
-	normalizedPosition := normalizeToRange(float64(i), 0, float64(s.NumTicks()-1), 0, b.W)
+	// the actual size available is the total width with the margins removed.
+	finalScaleWidth := b.W - (s.offset * 2)
 
-	return b.RelX(normalizedPosition + s.offset)
+	normalizedPosition := normalizeToRange(float64(i), 0, float64(s.NumTicks()-1), 0, finalScaleWidth)
+
+	return b.RelX(normalizedPosition) + s.offset
 }
 
 func (s *StdHorizontalScale) Offset() float64 {
 	return s.offset
 }
 
-func NewVerticalScale(series ...*Series) *StdVerticalScale {
+func NewVerticalScale(series ...Series) *StdVerticalScale {
 	return &StdVerticalScale{d: series}
 }
 
 type StdVerticalScale struct {
-	d []*Series
+	d []Series
 }
 
 func (r *StdVerticalScale) MinMax() (float64, float64) {
@@ -99,12 +98,12 @@ func (r *StdVerticalScale) Position(v float64, b BoundingBox) float64 {
 	return b.MapY(min, max, v)
 }
 
-func NewStackedVerticalScale(series ...*Series) VerticalScale {
+func NewStackedVerticalScale(series ...Series) VerticalScale {
 	return &StackedVerticalScale{d: series}
 }
 
 type StackedVerticalScale struct {
-	d []*Series
+	d []Series
 }
 
 func (s *StackedVerticalScale) NumTicks() int {

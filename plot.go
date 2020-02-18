@@ -7,7 +7,7 @@ import (
 
 type Plot interface {
 	Render(canvas *gg.Context, b BoundingBox) error
-	ReplaceSeries(fn func(s *Series) *Series)
+	ReplaceSeries(fn func(s Series) Series)
 	ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale)
 	VerticalScale() VerticalScale
 }
@@ -15,10 +15,10 @@ type Plot interface {
 func StackPlots(vs ...Plot) ([]Plot, VerticalScale) {
 	stacked := make([]Plot, len(vs))
 
-	var originalSeries []*Series
-	var lastSeries *Series
+	var originalSeries []Series
+	var lastSeries Series
 	for k := range vs {
-		vs[k].ReplaceSeries(func(s *Series) *Series {
+		vs[k].ReplaceSeries(func(s Series) Series {
 			originalSeries = append(originalSeries, s)
 			merged := s.AdditiveMerge(lastSeries)
 			lastSeries = merged
@@ -52,7 +52,7 @@ func (c *CompositePlot) Render(canvas *gg.Context, container BoundingBox) error 
 	return nil
 }
 
-func NewPointsPlot(yScale VerticalScale, xScale HorizontalScale, s *Series) Plot {
+func NewPointsPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
 	return &PointsPlot{
 		s:         s,
 		pointSize: 2,
@@ -62,7 +62,7 @@ func NewPointsPlot(yScale VerticalScale, xScale HorizontalScale, s *Series) Plot
 }
 
 type PointsPlot struct {
-	s         *Series
+	s         Series
 	pointSize float64
 	yScale    VerticalScale
 	xScale    HorizontalScale
@@ -86,7 +86,7 @@ func (c *PointsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func (c *PointsPlot) ReplaceSeries(fn func(s *Series) *Series) {
+func (c *PointsPlot) ReplaceSeries(fn func(s Series) Series) {
 	c.s = fn(c.s)
 }
 
@@ -98,14 +98,14 @@ func (c *PointsPlot) VerticalScale() VerticalScale {
 	return c.yScale
 }
 
-func NewLinesPlot(yScale VerticalScale, xScale HorizontalScale, s *Series) Plot {
+func NewLinesPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
 	return &LinesPlot{yScale: yScale, xScale: xScale, s: s, pointSize: 2}
 }
 
 type LinesPlot struct {
 	yScale    VerticalScale
 	xScale    HorizontalScale
-	s         *Series
+	s         Series
 	pointSize float64
 }
 
@@ -141,7 +141,7 @@ func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func (c *LinesPlot) ReplaceSeries(fn func(s *Series) *Series) {
+func (c *LinesPlot) ReplaceSeries(fn func(s Series) Series) {
 	c.s = fn(c.s)
 }
 
@@ -153,14 +153,14 @@ func (c *LinesPlot) VerticalScale() VerticalScale {
 	return c.yScale
 }
 
-func NewBarsPlot(yScale VerticalScale, xScale HorizontalScale, s *Series) Plot {
+func NewBarsPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
 	return &BarsPlot{yScale: yScale, xScale: xScale, s: s, maxBarWidth: 20}
 }
 
 type BarsPlot struct {
 	yScale      VerticalScale
 	xScale      HorizontalScale
-	s           *Series
+	s           Series
 	maxBarWidth float64
 }
 
@@ -185,7 +185,7 @@ func (c *BarsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func (c *BarsPlot) ReplaceSeries(fn func(s *Series) *Series) {
+func (c *BarsPlot) ReplaceSeries(fn func(s Series) Series) {
 	c.s = fn(c.s)
 }
 

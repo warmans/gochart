@@ -1,22 +1,21 @@
 package main
 
 import (
+	"image/color"
+
 	"github.com/fogleman/gg"
 	"github.com/warmans/gochart"
-	"image/color"
 )
 
 func main() {
 
-	numPoints := 10
+	numPoints := 22
 
-	series := gochart.NewSeries(
-		nil,
+	series := gochart.NewYSeries(
 		append(gochart.GenTestDataReversed(numPoints/2), gochart.GenTestData(numPoints/2)...),
 	)
 
-	series2 := gochart.NewSeries(
-		nil,
+	series2 := gochart.NewYSeries(
 		gochart.GenTestDataReversed(numPoints),
 	)
 
@@ -25,7 +24,7 @@ func main() {
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
-	xScale := gochart.NewHorizontalScale(series, 20)
+	xScale := gochart.NewHorizontalScale(series, 10)
 
 	stackedCharts, stackedScale := gochart.StackPlots(
 		gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series),

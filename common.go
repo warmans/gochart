@@ -140,7 +140,7 @@ func maxInt(a, b int) int {
 	return b
 }
 
-func allYData(series []*Series) [][]float64 {
+func allYData(series []Series) [][]float64 {
 	all := make([][]float64, 0)
 	for _, s := range series {
 		all = append(all, s.Ys())

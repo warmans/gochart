@@ -9,14 +9,14 @@ import (
 
 func main() {
 
-	numPoints := 24
+	numPoints := 10
 
-	series := gochart.NewSeries(
-		nil,
+	series := gochart.NewXYSeries(
+		gochart.GenTestTextLabels(numPoints),
 		append(gochart.GenTestDataReversed(numPoints/2), gochart.GenTestData(numPoints/2)...),
 	)
 
-	series3 := gochart.NewSeries(
+	series3 := gochart.NewXYSeries(
 		nil,
 		gochart.GenTestDataFlat(numPoints, 300),
 	)

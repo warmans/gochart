@@ -1,38 +1,64 @@
 package gochart
 
-func NewSeries(x []string, y []float64) *Series {
-	return &Series{x: x, y: y}
+import "fmt"
+
+func NewYSeries(y []float64) Series {
+	return &XYSeries{y: y}
 }
 
-type Series struct {
+func NewXYSeries(x []string, y []float64) Series {
+	return &XYSeries{x: x, y: y}
+}
+
+type Series interface {
+	X(i int) string
+	Y(i int) float64
+	Ys() []float64
+	Xs() []string
+	AdditiveMerge(add Series) Series
+}
+
+type XYSeries struct {
 	x []string
 	y []float64
 }
 
-func (s *Series) X(i int) string {
-	if i < len(s.x) {
-		return s.x[i]
+func (s *XYSeries) X(i int) string {
+	x := s.x
+	if x == nil {
+		x = s.Xs()
+	}
+	if i < len(x) {
+		return x[i]
 	}
 	return ""
 }
 
-func (s *Series) Y(i int) float64 {
+func (s *XYSeries) Y(i int) float64 {
 	if i < len(s.y) {
 		return s.y[i]
 	}
 	return 0.0
 }
 
-func (s *Series) Ys() []float64 {
+func (s *XYSeries) Ys() []float64 {
 	return s.y
 }
 
-func (s *Series) Xs() []string {
+func (s *XYSeries) Xs() []string {
+	if s.x == nil {
+		//if no x-axis is set then just generate numeric values from the Y indexes.
+		xs := make([]string, len(s.y))
+		for i := 0; i < len(s.y); i++ {
+			xs[i] = fmt.Sprintf("%d", i)
+		}
+		return xs
+	}
 	return s.x
 }
 
-func (s *Series) AdditiveMerge(add *Series) *Series {
-	merged := &Series{
+func (s *XYSeries) AdditiveMerge(add Series) Series {
+	merged := &XYSeries{
 		x: make([]string, len(s.Ys())),
 		y: make([]float64, len(s.Ys())),
 	}

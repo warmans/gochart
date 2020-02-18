@@ -1,8 +1,9 @@
 package gochart
 
 import (
-	"github.com/fogleman/gg"
 	"image/color"
+
+	"github.com/fogleman/gg"
 )
 
 func MirrorVerticalAxis() func(config *VerticalAxisConfig) {
@@ -94,21 +95,17 @@ func (a *VerticalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func NewHorizontalAxis(s *Series, xScale HorizontalScale) *HorizontalAxis {
+func NewHorizontalAxis(s Series, xScale HorizontalScale) *HorizontalAxis {
 	return &HorizontalAxis{s: s, xScale: xScale}
 }
 
 type HorizontalAxis struct {
-	s      *Series
+	s      Series
 	xScale HorizontalScale
 }
 
 func (a *HorizontalAxis) Scale() HorizontalScale {
 	return a.xScale
-}
-
-func (a *HorizontalAxis) Data() *Series {
-	return a.s
 }
 
 func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
