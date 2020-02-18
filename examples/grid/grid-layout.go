@@ -43,7 +43,7 @@ func main() {
 			HeightFactor: 0.95,
 			Columns: []gochart.GridColumn{
 				{ColSpan: 1, El: gochart.NewVerticalAxis(stackedScale)},
-				{ColSpan: 10, El: gochart.NewCompositePlot(append(stackedCharts, linePlot)...)},
+				{ColSpan: 10, El: gochart.NewCompositePlot(append(stackedCharts, gochart.NewYGrid(stackedScale), linePlot)...)},
 				{ColSpan: 1, El: gochart.NewVerticalAxis(rightScale, gochart.MirrorVerticalAxis())},
 			},
 		},

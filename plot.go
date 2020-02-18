@@ -1,8 +1,11 @@
 package gochart
 
 import (
-	"github.com/fogleman/gg"
+	"image/color"
 	"math"
+
+	"github.com/fogleman/gg"
+	"github.com/warmans/gochart/pkg/style"
 )
 
 type Plot interface {
@@ -10,6 +13,7 @@ type Plot interface {
 	ReplaceSeries(fn func(s Series) Series)
 	ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale)
 	VerticalScale() VerticalScale
+	WithStyle(opt ...style.StyleOpt)
 }
 
 func StackPlots(vs ...Plot) ([]Plot, VerticalScale) {
@@ -58,6 +62,7 @@ func NewPointsPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot 
 		pointSize: 2,
 		yScale:    yScale,
 		xScale:    xScale,
+		styleOpts: style.DefaultPlotOpts,
 	}
 }
 
@@ -66,6 +71,7 @@ type PointsPlot struct {
 	pointSize float64
 	yScale    VerticalScale
 	xScale    HorizontalScale
+	styleOpts style.StyleOpts
 }
 
 func (c *PointsPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -73,8 +79,9 @@ func (c *PointsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.Push()
 	defer canvas.Pop()
 
+	c.styleOpts.Apply(canvas)
+
 	for i, v := range c.s.Ys() {
-		canvas.SetColor(RandomColor())
 		canvas.DrawCircle(
 			c.xScale.Position(i, b),
 			c.yScale.Position(v, b),
@@ -98,8 +105,23 @@ func (c *PointsPlot) VerticalScale() VerticalScale {
 	return c.yScale
 }
 
+func (c *PointsPlot) WithStyle(opt ...style.StyleOpt) {
+	c.styleOpts = append(c.styleOpts, opt...)
+}
+
+func PlotWithStyles(p Plot, opts ...style.StyleOpt) Plot {
+	p.WithStyle(opts...)
+	return p
+}
+
 func NewLinesPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
-	return &LinesPlot{yScale: yScale, xScale: xScale, s: s, pointSize: 2}
+	return &LinesPlot{
+		yScale:    yScale,
+		xScale:    xScale,
+		s:         s,
+		pointSize: 2,
+		styleOpts: style.DefaultPlotOpts,
+	}
 }
 
 type LinesPlot struct {
@@ -107,6 +129,7 @@ type LinesPlot struct {
 	xScale    HorizontalScale
 	s         Series
 	pointSize float64
+	styleOpts style.StyleOpts
 }
 
 func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -114,7 +137,7 @@ func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.Push()
 	defer canvas.Pop()
 
-	canvas.SetColor(RandomColor())
+	c.styleOpts.Apply(canvas)
 
 	points := c.s.Ys()
 
@@ -153,8 +176,18 @@ func (c *LinesPlot) VerticalScale() VerticalScale {
 	return c.yScale
 }
 
+func (c *LinesPlot) WithStyle(opt ...style.StyleOpt) {
+	c.styleOpts = append(c.styleOpts, opt...)
+}
+
 func NewBarsPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
-	return &BarsPlot{yScale: yScale, xScale: xScale, s: s, maxBarWidth: 20}
+	return &BarsPlot{
+		yScale:      yScale,
+		xScale:      xScale,
+		s:           s,
+		maxBarWidth: 20,
+		styleOpts:   style.DefaultPlotOpts,
+	}
 }
 
 type BarsPlot struct {
@@ -162,6 +195,7 @@ type BarsPlot struct {
 	xScale      HorizontalScale
 	s           Series
 	maxBarWidth float64
+	styleOpts   style.StyleOpts
 }
 
 func (c *BarsPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -169,9 +203,10 @@ func (c *BarsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 	canvas.Push()
 	defer canvas.Pop()
 
+	c.styleOpts.Apply(canvas)
+
 	maxBarWidth := math.Max(math.Min(b.W/float64(c.xScale.NumTicks()), c.maxBarWidth)-defaultMargin, 1)
 
-	canvas.SetColor(RandomColor())
 	for i, v := range c.s.Ys() {
 		canvas.DrawRectangle(
 			c.xScale.Position(i, b)-maxBarWidth/2,
@@ -181,6 +216,7 @@ func (c *BarsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 		)
 	}
 	canvas.Fill()
+	canvas.Stroke()
 
 	return nil
 }
@@ -195,4 +231,64 @@ func (c *BarsPlot) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) 
 
 func (c *BarsPlot) VerticalScale() VerticalScale {
 	return c.yScale
+}
+
+func (c *BarsPlot) WithStyle(opt ...style.StyleOpt) {
+	c.styleOpts = append(c.styleOpts, opt...)
+}
+
+func NewYGrid(yScale VerticalScale) Plot {
+	return &YGrid{
+		yScale: yScale,
+		styleOpts: style.StyleOpts{
+			style.Color(color.RGBA{A: 32}),
+		},
+	}
+}
+
+type YGrid struct {
+	yScale    VerticalScale
+	styleOpts style.StyleOpts
+}
+
+func (g *YGrid) Render(canvas *gg.Context, b BoundingBox) error {
+	canvas.Push()
+	defer canvas.Pop()
+
+	g.styleOpts.Apply(canvas)
+
+	_, max := g.yScale.MinMax()
+
+	for i := range g.yScale.Labels() {
+
+		spacing := max / float64(g.yScale.NumTicks())
+		linePos := g.yScale.Position(spacing*float64(i), b)
+
+		canvas.DrawLine(
+			b.RelX(0),
+			linePos,
+			b.RelX(b.W),
+			linePos,
+		)
+	}
+
+	canvas.Stroke()
+
+	return nil
+}
+
+func (g *YGrid) ReplaceSeries(fn func(s Series) Series) {
+	// no op - grid doesn't need a series
+}
+
+func (g *YGrid) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
+	g.yScale = fn(g.VerticalScale())
+}
+
+func (g *YGrid) VerticalScale() VerticalScale {
+	return g.yScale
+}
+
+func (g *YGrid) WithStyle(opt ...style.StyleOpt) {
+	g.styleOpts = append(g.styleOpts, opt...)
 }

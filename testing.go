@@ -1,9 +1,6 @@
 package gochart
 
 import (
-	"image/color"
-	"math/rand"
-
 	"github.com/Pallinder/go-randomdata"
 )
 
@@ -37,13 +34,4 @@ func GenTestTextLabels(num int) []string {
 		labels[i] = randomdata.City()
 	}
 	return labels
-}
-
-func RandomColor() color.RGBA {
-	return color.RGBA{
-		R: uint8(rand.Intn(255)),
-		G: uint8(rand.Intn(255)),
-		B: uint8(rand.Intn(255)),
-		A: 255,
-	}
 }

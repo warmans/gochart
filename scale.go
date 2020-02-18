@@ -47,11 +47,6 @@ func (s *StdHorizontalScale) Labels() []Label {
 
 func (s *StdHorizontalScale) Position(i int, b BoundingBox) float64 {
 
-	// todo: this offset acts weirdly with barcharts. More or less data can cause it to shift unevently. It's probably
-	// calculated wrong.
-	// I think it's because the offset is not taken into account in the tick spacing, just kind of added on the start.
-	// Each tick probably needs to be moved by a fraction of the offset
-
 	if i > s.NumTicks() {
 		return b.RelX(b.W - s.offset)
 	}
