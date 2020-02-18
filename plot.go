@@ -11,12 +11,36 @@ import (
 type Plot interface {
 	Render(canvas *gg.Context, b BoundingBox) error
 	ReplaceSeries(fn func(s Series) Series)
-	ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale)
-	VerticalScale() VerticalScale
-	WithStyle(opt ...style.StyleOpt)
+	ReplaceYScale(fn func(s YScale) YScale)
+	YScale() YScale
+	SetStyle(opt ...style.Opt)
 }
 
-func StackPlots(vs ...Plot) ([]Plot, VerticalScale) {
+type PlotOpt func(p Plot)
+
+func PlotStyle(opt ...style.Opt) PlotOpt {
+	return func(p Plot) {
+		p.SetStyle(opt...)
+	}
+}
+
+func PlotPointSize(size float64) PlotOpt {
+	return func(p Plot) {
+		if points, ok := p.(*PointsPlot); ok {
+			points.pointSize = size
+		}
+	}
+}
+
+func PlotBarMaxWidth(width float64) PlotOpt {
+	return func(p Plot) {
+		if bars, ok := p.(*BarsPlot); ok {
+			bars.maxBarWidth = width
+		}
+	}
+}
+
+func StackPlots(vs ...Plot) ([]Plot, YScale) {
 	stacked := make([]Plot, len(vs))
 
 	var originalSeries []Series
@@ -30,9 +54,9 @@ func StackPlots(vs ...Plot) ([]Plot, VerticalScale) {
 		})
 		stacked[(len(vs)-1)-k] = vs[k]
 	}
-	stackedScale := NewStackedVerticalScale(originalSeries...)
+	stackedScale := NewStackedYScale(originalSeries...)
 	for k := range stacked {
-		stacked[k].ReplaceVerticalScale(func(s VerticalScale) VerticalScale {
+		stacked[k].ReplaceYScale(func(s YScale) YScale {
 			return stackedScale
 		})
 	}
@@ -56,22 +80,26 @@ func (c *CompositePlot) Render(canvas *gg.Context, container BoundingBox) error 
 	return nil
 }
 
-func NewPointsPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
-	return &PointsPlot{
+func NewPointsPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot {
+	p := &PointsPlot{
+		Styles:    NewStyles(style.DefaultPlotOpts...),
 		s:         s,
 		pointSize: 2,
 		yScale:    yScale,
 		xScale:    xScale,
-		styleOpts: style.DefaultPlotOpts,
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 type PointsPlot struct {
+	Styles
 	s         Series
 	pointSize float64
-	yScale    VerticalScale
-	xScale    HorizontalScale
-	styleOpts style.StyleOpts
+	yScale    YScale
+	xScale    XScale
 }
 
 func (c *PointsPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -97,39 +125,39 @@ func (c *PointsPlot) ReplaceSeries(fn func(s Series) Series) {
 	c.s = fn(c.s)
 }
 
-func (c *PointsPlot) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
-	c.yScale = fn(c.VerticalScale())
+func (c *PointsPlot) ReplaceYScale(fn func(s YScale) YScale) {
+	c.yScale = fn(c.YScale())
 }
 
-func (c *PointsPlot) VerticalScale() VerticalScale {
+func (c *PointsPlot) YScale() YScale {
 	return c.yScale
 }
 
-func (c *PointsPlot) WithStyle(opt ...style.StyleOpt) {
-	c.styleOpts = append(c.styleOpts, opt...)
-}
-
-func PlotWithStyles(p Plot, opts ...style.StyleOpt) Plot {
-	p.WithStyle(opts...)
+func PlotWithStyles(p Plot, opts ...style.Opt) Plot {
+	p.SetStyle(opts...)
 	return p
 }
 
-func NewLinesPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
-	return &LinesPlot{
+func NewLinesPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot {
+	p := &LinesPlot{
+		Styles:    NewStyles(style.DefaultPlotOpts...),
 		yScale:    yScale,
 		xScale:    xScale,
 		s:         s,
 		pointSize: 2,
-		styleOpts: style.DefaultPlotOpts,
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 type LinesPlot struct {
-	yScale    VerticalScale
-	xScale    HorizontalScale
+	Styles
+	yScale    YScale
+	xScale    XScale
 	s         Series
 	pointSize float64
-	styleOpts style.StyleOpts
 }
 
 func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -168,34 +196,34 @@ func (c *LinesPlot) ReplaceSeries(fn func(s Series) Series) {
 	c.s = fn(c.s)
 }
 
-func (c *LinesPlot) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
-	c.yScale = fn(c.VerticalScale())
+func (c *LinesPlot) ReplaceYScale(fn func(s YScale) YScale) {
+	c.yScale = fn(c.YScale())
 }
 
-func (c *LinesPlot) VerticalScale() VerticalScale {
+func (c *LinesPlot) YScale() YScale {
 	return c.yScale
 }
 
-func (c *LinesPlot) WithStyle(opt ...style.StyleOpt) {
-	c.styleOpts = append(c.styleOpts, opt...)
-}
-
-func NewBarsPlot(yScale VerticalScale, xScale HorizontalScale, s Series) Plot {
-	return &BarsPlot{
+func NewBarsPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot {
+	p := &BarsPlot{
+		Styles:      NewStyles(style.DefaultPlotOpts...),
 		yScale:      yScale,
 		xScale:      xScale,
 		s:           s,
 		maxBarWidth: 20,
-		styleOpts:   style.DefaultPlotOpts,
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 type BarsPlot struct {
-	yScale      VerticalScale
-	xScale      HorizontalScale
+	Styles
+	yScale      YScale
+	xScale      XScale
 	s           Series
 	maxBarWidth float64
-	styleOpts   style.StyleOpts
 }
 
 func (c *BarsPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -225,30 +253,28 @@ func (c *BarsPlot) ReplaceSeries(fn func(s Series) Series) {
 	c.s = fn(c.s)
 }
 
-func (c *BarsPlot) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
-	c.yScale = fn(c.VerticalScale())
+func (c *BarsPlot) ReplaceYScale(fn func(s YScale) YScale) {
+	c.yScale = fn(c.YScale())
 }
 
-func (c *BarsPlot) VerticalScale() VerticalScale {
+func (c *BarsPlot) YScale() YScale {
 	return c.yScale
 }
 
-func (c *BarsPlot) WithStyle(opt ...style.StyleOpt) {
-	c.styleOpts = append(c.styleOpts, opt...)
-}
-
-func NewYGrid(yScale VerticalScale) Plot {
-	return &YGrid{
+func NewYGrid(yScale YScale, opts ...PlotOpt) Plot {
+	p := &YGrid{
+		Styles: NewStyles(style.Color(color.RGBA{A: 64})),
 		yScale: yScale,
-		styleOpts: style.StyleOpts{
-			style.Color(color.RGBA{A: 32}),
-		},
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 type YGrid struct {
-	yScale    VerticalScale
-	styleOpts style.StyleOpts
+	Styles
+	yScale    YScale
 }
 
 func (g *YGrid) Render(canvas *gg.Context, b BoundingBox) error {
@@ -281,14 +307,10 @@ func (g *YGrid) ReplaceSeries(fn func(s Series) Series) {
 	// no op - grid doesn't need a series
 }
 
-func (g *YGrid) ReplaceVerticalScale(fn func(s VerticalScale) VerticalScale) {
-	g.yScale = fn(g.VerticalScale())
+func (g *YGrid) ReplaceYScale(fn func(s YScale) YScale) {
+	g.yScale = fn(g.YScale())
 }
 
-func (g *YGrid) VerticalScale() VerticalScale {
+func (g *YGrid) YScale() YScale {
 	return g.yScale
-}
-
-func (g *YGrid) WithStyle(opt ...style.StyleOpt) {
-	g.styleOpts = append(g.styleOpts, opt...)
 }

@@ -1,38 +1,56 @@
 package style
 
 import (
+	"golang.org/x/image/font"
 	"image/color"
 	"math/rand"
 
 	"github.com/fogleman/gg"
 )
 
-var DefaultPlotOpts = StyleOpts{
+var DefaultPlotOpts = Opts{
 	// set a default random volume for bar fills. This can be overwritten by other options.
 	func(canvas *gg.Context) {
 		canvas.SetColor(RandomColor())
 	},
 }
 
-type StyleOpt func(canvas *gg.Context)
+var DefaultAxisOpts = Opts{
+	Color(color.RGBA{A: 255}),
+	LineWidth(2),
+}
 
-type StyleOpts []StyleOpt
+type Opt func(canvas *gg.Context)
 
-func (s StyleOpts) Apply(canvas *gg.Context) {
+type Opts []Opt
+
+func (s Opts) Apply(canvas *gg.Context) {
 	for _, o := range s {
 		o(canvas)
 	}
 }
 
-func Color(rgba color.RGBA) StyleOpt {
+func Color(rgba color.RGBA) Opt {
 	return func(canvas *gg.Context) {
 		canvas.SetColor(rgba)
 	}
 }
 
-func Dash(dashes ...float64) StyleOpt {
+func Dash(dashes ...float64) Opt {
 	return func(canvas *gg.Context) {
 		canvas.SetDash(dashes...)
+	}
+}
+
+func LineWidth(width float64) Opt {
+	return func(canvas *gg.Context) {
+		canvas.SetLineWidth(width)
+	}
+}
+
+func FontFace(fontFace font.Face) Opt {
+	return func(canvas *gg.Context) {
+		canvas.SetFontFace(fontFace)
 	}
 }
 

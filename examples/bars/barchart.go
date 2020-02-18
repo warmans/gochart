@@ -8,9 +8,9 @@ import (
 	"github.com/warmans/gochart/pkg/style"
 )
 
-func main() {
+const numPoints = 22
 
-	numPoints := 10
+func main() {
 
 	series := gochart.NewXYSeries(
 		gochart.GenTestTextLabels(numPoints),
@@ -27,36 +27,36 @@ func main() {
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
-	xScale := gochart.NewHorizontalScale(series, 10)
+	xScale := gochart.NewXScale(series, 10)
 
 	// Stacked Bar Plot
 	stackedCharts, stackedScale := gochart.StackPlots(
-		gochart.PlotWithStyles(gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series), style.Color(color.RGBA{255, 0, 0, 255}), style.Dash(5)),
-		gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewVerticalScale(series), xScale, series), )
+		gochart.PlotWithStyles(gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series), style.Color(color.RGBA{R: 255, A: 255}), style.Dash(5)),
+		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series), )
 
 	layout := gochart.NewDynamicLayout(
-		gochart.NewVerticalAxis(stackedScale),
-		gochart.NewHorizontalAxis(series, xScale),
+		gochart.NewYAxis(stackedScale),
+		gochart.NewXAxis(series, xScale),
 		append(
-			stackedCharts,
-
 			// Background grid lines
-			gochart.NewYGrid(stackedScale),
+			[]gochart.Plot{gochart.NewYGrid(stackedScale)},
+			append(
+				stackedCharts,
 
-			// Line Plot
-			gochart.PlotWithStyles(
-				gochart.NewLinesPlot(stackedScale, xScale, series),
-				style.Color(color.RGBA{0, 0, 0, 255}),
-				style.Dash(5),
-			),
-			// Points Plot
-			gochart.PlotWithStyles(
-				gochart.NewPointsPlot(stackedScale, xScale, series3),
-				style.Color(color.RGBA{0, 0, 255, 255}),
-			),
+				// Line Plot
+				gochart.NewLinesPlot(stackedScale, xScale, series, gochart.PlotStyle(
+					style.Color(color.RGBA{A: 255}),
+					style.Dash(5),
+				)),
+
+				// Points Plot
+				gochart.NewPointsPlot(stackedScale, xScale, series3, gochart.PlotPointSize(5), gochart.PlotStyle(
+					style.Color(color.RGBA{B: 255, A: 255})),
+				),
+			)...,
 		)...
 	)
 

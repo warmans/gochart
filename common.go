@@ -1,6 +1,7 @@
 package gochart
 
 import (
+	"github.com/warmans/gochart/pkg/style"
 	"math"
 
 	"github.com/fogleman/gg"
@@ -9,9 +10,20 @@ import (
 const defaultMargin float64 = 8
 const defaultTickSize float64 = 4
 
-
 type Renderable interface {
 	Render(canvas *gg.Context, container BoundingBox) error
+}
+
+func NewStyles(defaults ...style.Opt) Styles {
+	return Styles{styleOpts: defaults}
+}
+
+type Styles struct {
+	styleOpts style.Opts
+}
+
+func (a *Styles) SetStyle(opt ...style.Opt) {
+	a.styleOpts = append(a.styleOpts, opt...)
 }
 
 // simply find the min and max numbers in the given

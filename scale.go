@@ -7,37 +7,37 @@ type Label struct {
 	Tick  int
 }
 
-type HorizontalScale interface {
+type XScale interface {
 	NumTicks() int
 	Labels() []Label
 	Position(i int, b BoundingBox) float64
 	Offset() float64
 }
 
-type VerticalScale interface {
+type YScale interface {
 	NumTicks() int
 	Labels() []Label
 	MinMax() (float64, float64)
 	Position(v float64, b BoundingBox) float64
 }
 
-func NewHorizontalScale(series Series, offset float64) *StdHorizontalScale {
-	return &StdHorizontalScale{series: series, offset: offset}
+func NewXScale(series Series, offset float64) *StdXScale {
+	return &StdXScale{series: series, offset: offset}
 }
 
-type StdHorizontalScale struct {
+type StdXScale struct {
 	series Series
 	offset float64
 }
 
-func (s *StdHorizontalScale) NumTicks() int {
+func (s *StdXScale) NumTicks() int {
 	if s.series.Ys() == nil {
 		return len(s.series.Ys())
 	}
 	return len(s.series.Xs())
 }
 
-func (s *StdHorizontalScale) Labels() []Label {
+func (s *StdXScale) Labels() []Label {
 	labels := make([]Label, s.NumTicks())
 	for i := 0; i < s.NumTicks(); i++ {
 		labels[i] = Label{s.series.X(i), i}
@@ -45,7 +45,7 @@ func (s *StdHorizontalScale) Labels() []Label {
 	return labels
 }
 
-func (s *StdHorizontalScale) Position(i int, b BoundingBox) float64 {
+func (s *StdXScale) Position(i int, b BoundingBox) float64 {
 
 	if i > s.NumTicks() {
 		return b.RelX(b.W - s.offset)
@@ -59,27 +59,27 @@ func (s *StdHorizontalScale) Position(i int, b BoundingBox) float64 {
 	return b.RelX(normalizedPosition) + s.offset
 }
 
-func (s *StdHorizontalScale) Offset() float64 {
+func (s *StdXScale) Offset() float64 {
 	return s.offset
 }
 
-func NewVerticalScale(series ...Series) *StdVerticalScale {
-	return &StdVerticalScale{d: series}
+func NewYScale(series ...Series) *StdYScale {
+	return &StdYScale{d: series}
 }
 
-type StdVerticalScale struct {
+type StdYScale struct {
 	d []Series
 }
 
-func (r *StdVerticalScale) MinMax() (float64, float64) {
+func (r *StdYScale) MinMax() (float64, float64) {
 	return floatsRange(allYData(r.d))
 }
 
-func (r *StdVerticalScale) NumTicks() int {
+func (r *StdYScale) NumTicks() int {
 	return 10 //todo: should scale based on the canvas size
 }
 
-func (r *StdVerticalScale) Labels() []Label {
+func (r *StdYScale) Labels() []Label {
 	labels := make([]Label, r.NumTicks()+1)
 	_, max := r.MinMax()
 	for i := 0; i <= r.NumTicks(); i++ {
@@ -88,24 +88,24 @@ func (r *StdVerticalScale) Labels() []Label {
 	return labels
 }
 
-func (r *StdVerticalScale) Position(v float64, b BoundingBox) float64 {
+func (r *StdYScale) Position(v float64, b BoundingBox) float64 {
 	min, max := r.MinMax()
 	return b.MapY(min, max, v)
 }
 
-func NewStackedVerticalScale(series ...Series) VerticalScale {
-	return &StackedVerticalScale{d: series}
+func NewStackedYScale(series ...Series) YScale {
+	return &StackedYScale{d: series}
 }
 
-type StackedVerticalScale struct {
+type StackedYScale struct {
 	d []Series
 }
 
-func (s *StackedVerticalScale) NumTicks() int {
+func (s *StackedYScale) NumTicks() int {
 	return 10
 }
 
-func (s *StackedVerticalScale) Labels() []Label {
+func (s *StackedYScale) Labels() []Label {
 	labels := make([]Label, s.NumTicks()+1)
 	_, max := s.MinMax()
 	for i := 0; i <= s.NumTicks(); i++ {
@@ -114,13 +114,13 @@ func (s *StackedVerticalScale) Labels() []Label {
 	return labels
 }
 
-func (s *StackedVerticalScale) MinMax() (float64, float64) {
+func (s *StackedYScale) MinMax() (float64, float64) {
 	min, _ := floatsRange(allYData(s.d))
 	_, max := floatRange(additiveFloatMerge(allYData(s.d)))
 	return min, max
 }
 
-func (s *StackedVerticalScale) Position(v float64, b BoundingBox) float64 {
+func (s *StackedYScale) Position(v float64, b BoundingBox) float64 {
 	min, max := s.MinMax()
 	return b.MapY(min, max, v)
 }

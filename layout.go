@@ -46,15 +46,15 @@ func (b BoundingBox) DebugRender(canvas *gg.Context) {
 	canvas.Stroke()
 }
 
-func NewDynamicLayout(yAxis *VerticalAxis, xAxis *HorizontalAxis, charts ...Plot) *DynamicLayout {
+func NewDynamicLayout(yAxis *YAxis, xAxis *XAxis, charts ...Plot) *DynamicLayout {
 	return &DynamicLayout{charts: charts, yAxis: yAxis, xAxis: xAxis}
 }
 
 // DynamicLayout will calculate size of axis based on the given data.
 type DynamicLayout struct {
 	charts []Plot
-	yAxis  *VerticalAxis
-	xAxis  *HorizontalAxis
+	yAxis  *YAxis
+	xAxis  *XAxis
 }
 
 func (l *DynamicLayout) Render(canvas *gg.Context, container BoundingBox) error {

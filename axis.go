@@ -1,45 +1,64 @@
 package gochart
 
 import (
-	"image/color"
-
 	"github.com/fogleman/gg"
+	"github.com/warmans/gochart/pkg/style"
 )
 
-func MirrorVerticalAxis() func(config *VerticalAxisConfig) {
-	return func(config *VerticalAxisConfig) {
-		config.Mirrored = true
+func MirrorYAxis() YAxisOpt {
+	return func(ax *YAxis) {
+		ax.cfg.Mirrored = true
 	}
 }
 
-type VerticalAxisConfig struct {
+func YFontStyles(opt ...style.Opt) YAxisOpt {
+	return func(ax *YAxis) {
+		ax.fontStyles.SetStyle(opt...)
+	}
+}
+
+func YLineStyles(opt ...style.Opt) YAxisOpt {
+	return func(ax *YAxis) {
+		ax.lineStyles.SetStyle(opt...)
+	}
+}
+
+type YAxisOpt func(ax *YAxis)
+
+type YAxisConfig struct {
 	Mirrored bool
 }
 
-func NewVerticalAxis(scale VerticalScale, opts ...func(config *VerticalAxisConfig)) *VerticalAxis {
-	cfg := &VerticalAxisConfig{}
-	for _, opt := range opts {
-		opt(cfg)
+func NewYAxis(scale YScale, opts ...YAxisOpt) *YAxis {
+	y := &YAxis{
+		lineStyles: NewStyles(style.DefaultAxisOpts...),
+		fontStyles: NewStyles(style.DefaultAxisOpts...),
+		scale:      scale,
+		cfg:        &YAxisConfig{},
 	}
-	return &VerticalAxis{scale: scale, cfg: cfg}
+	for _, opt := range opts {
+		opt(y)
+	}
+	return y
 }
 
-type VerticalAxis struct {
-	scale VerticalScale
-	cfg   *VerticalAxisConfig
+type YAxis struct {
+	lineStyles Styles
+	fontStyles Styles
+	scale      YScale
+	cfg        *YAxisConfig
 }
 
-func (a *VerticalAxis) Scale() VerticalScale {
+func (a *YAxis) Scale() YScale {
 	return a.scale
 }
 
-func (a *VerticalAxis) Render(canvas *gg.Context, b BoundingBox) error {
+func (a *YAxis) Render(canvas *gg.Context, b BoundingBox) error {
 
 	canvas.Push()
 	defer canvas.Pop()
 
-	canvas.SetColor(color.RGBA{0, 0, 0, 255})
-	canvas.SetLineWidth(2)
+	a.lineStyles.styleOpts.Apply(canvas)
 
 	verticalLinePos := b.RelX(b.W)
 	if a.cfg.Mirrored {
@@ -68,6 +87,9 @@ func (a *VerticalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 			linePos,
 		)
 
+		canvas.Push()
+		a.fontStyles.styleOpts.Apply(canvas)
+
 		textAlign := gg.AlignRight
 		if a.cfg.Mirrored {
 			textAlign = gg.AlignLeft
@@ -88,33 +110,57 @@ func (a *VerticalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 			0,
 			textAlign,
 		)
+		canvas.Pop()
 	}
-
 	canvas.Stroke()
 
 	return nil
 }
 
-func NewHorizontalAxis(s Series, xScale HorizontalScale) *HorizontalAxis {
-	return &HorizontalAxis{s: s, xScale: xScale}
+func NewXAxis(s Series, xScale XScale, opts ...XAxisOpt) *XAxis {
+	x := &XAxis{
+		lineStyles: NewStyles(style.DefaultAxisOpts...),
+		fontStyles: NewStyles(style.DefaultAxisOpts...),
+		s:          s,
+		xScale:     xScale,
+	}
+	for _, o := range opts {
+		o(x)
+	}
+	return x
 }
 
-type HorizontalAxis struct {
-	s      Series
-	xScale HorizontalScale
+type XAxisOpt func(ax *XAxis)
+
+func XFontStyles(opt ...style.Opt) XAxisOpt {
+	return func(ax *XAxis) {
+		ax.fontStyles.SetStyle(opt...)
+	}
 }
 
-func (a *HorizontalAxis) Scale() HorizontalScale {
+func XLineStyles(opt ...style.Opt) XAxisOpt {
+	return func(ax *XAxis) {
+		ax.lineStyles.SetStyle(opt...)
+	}
+}
+
+type XAxis struct {
+	lineStyles Styles
+	fontStyles Styles
+	s          Series
+	xScale     XScale
+}
+
+func (a *XAxis) Scale() XScale {
 	return a.xScale
 }
 
-func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
+func (a *XAxis) Render(canvas *gg.Context, b BoundingBox) error {
 
 	canvas.Push()
 	defer canvas.Pop()
 
-	canvas.SetColor(color.RGBA{A: 255})
-	canvas.SetLineWidth(2)
+	a.lineStyles.styleOpts.Apply(canvas)
 
 	// horizontal line
 	canvas.DrawLine(b.RelX(0), b.RelY(0), b.RelX(b.W), b.RelY(0))
@@ -134,6 +180,9 @@ func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 			b.RelY(0)+defaultTickSize,
 		)
 
+		canvas.Push()
+		a.fontStyles.styleOpts.Apply(canvas)
+
 		canvas.DrawStringWrapped(
 			label.Value,
 			linePos,
@@ -144,6 +193,7 @@ func (a *HorizontalAxis) Render(canvas *gg.Context, b BoundingBox) error {
 			1,
 			gg.AlignCenter,
 		)
+		canvas.Pop()
 	}
 
 	canvas.Stroke()
