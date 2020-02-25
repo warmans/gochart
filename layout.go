@@ -2,8 +2,9 @@ package gochart
 
 import (
 	"fmt"
-	"github.com/fogleman/gg"
 	"image/color"
+
+	"github.com/fogleman/gg"
 )
 
 type BoundingBox struct {
@@ -22,7 +23,9 @@ func (b BoundingBox) MapX(min, max, value float64) float64 {
 // MapY takes the given min/max and maps them to the box then returns the valu Ye position within that scale.
 // E.g. val:2 min:1 max: 3 of a 100x100 box will return 50
 func (b BoundingBox) MapY(min, max, value float64) float64 {
-	return b.RelY(b.H) - normalizeToRange(value, min, max, 0, b.H)
+	//todo: min value must be zero'd otherwise it pushes the scale off the chart.
+	// this is a bug probably in normalizeToRange :/
+	return b.RelY(b.H) - normalizeToRange(value, 0, max, 0, b.H)
 }
 
 // RelX is the relative position within the canvas i.e. 0 is the far left of the box, not the far left
@@ -115,8 +118,8 @@ func New12ColGridLayout(rows ...GridRow) *GridLayout {
 }
 
 type GridRow struct {
-	HeightFactor float64 // between 0:1 where 1 is 100% and 0.1 is 10%
-	Columns      []GridColumn
+	HeightPercent float64 // between 0:1 where 1 is 100% and 0.1 is 10%
+	Columns       []GridColumn
 }
 
 type GridColumn struct {
@@ -134,7 +137,7 @@ func (l *GridLayout) Render(canvas *gg.Context, container BoundingBox) error {
 	var heightOffset float64
 	for _, row := range l.rows {
 
-		rowHeight := container.H * row.HeightFactor
+		rowHeight := container.H * row.HeightPercent
 
 		var widthOffset float64
 		var numColumnsRendered int64

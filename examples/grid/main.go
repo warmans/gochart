@@ -27,20 +27,20 @@ func main() {
 	xScale := gochart.NewXScale(series, 10)
 
 	stackedCharts, stackedScale := gochart.StackPlots(
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
 	)
 
-	rightScale := gochart.NewYScale(series2)
+	rightScale := gochart.NewYScale(10, series2)
 
 	linePlot := gochart.NewLinesPlot(rightScale, xScale, series2)
 
 	grid := gochart.New12ColGridLayout(
 		gochart.GridRow{
-			HeightFactor: 0.95,
+			HeightPercent: 0.95,
 			Columns: []gochart.GridColumn{
 				{ColSpan: 1, El: gochart.NewYAxis(stackedScale)},
 				{ColSpan: 10, El: gochart.NewCompositePlot(
@@ -50,7 +50,7 @@ func main() {
 			},
 		},
 		gochart.GridRow{
-			HeightFactor: 0.05,
+			HeightPercent: 0.05,
 			Columns: []gochart.GridColumn{
 				{ColSpan: 1},
 				{ColSpan: 10, El: gochart.NewXAxis(series, xScale)},

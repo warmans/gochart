@@ -1,10 +1,11 @@
 package gochart
 
 import (
-	"github.com/warmans/gochart/pkg/style"
 	"math"
+	"time"
 
 	"github.com/fogleman/gg"
+	"github.com/warmans/gochart/pkg/style"
 )
 
 const defaultMargin float64 = 8
@@ -71,6 +72,20 @@ func floatRange(v []float64) (float64, float64) {
 	return min, max
 }
 
+func timeRange(v []time.Time) (time.Time, time.Time) {
+	max := time.Time{}
+	min := time.Unix(math.MaxInt32, 0) //2038 :(
+	for _, v := range v {
+		if v.After(max) {
+			max = v
+		}
+		if v.Before(min) {
+			min = v
+		}
+	}
+	return min, max
+}
+
 func BoundingBoxFromCanvas(ctx *gg.Context) BoundingBox {
 	return BoundingBox{
 		X: 20,
@@ -108,6 +123,9 @@ func reduceNumLabelsToFitSpace(canvas *gg.Context, ss []Label, size float64) []L
 			return ss
 		}
 
+		// todo: this skews the labels to the left. It needs to center the ticks rather than arrange them
+		// from left to right. The problem is the labels are centered on the ticks so the first and
+		// last do not take up the expected space.
 		reduced := []Label{}
 		for k, s := range ss {
 			if k%2 == 0 {
@@ -158,4 +176,9 @@ func allYData(series []Series) [][]float64 {
 		all = append(all, s.Ys())
 	}
 	return all
+}
+
+func TimeSeriesDuration(s []time.Time) time.Duration {
+	min, max := timeRange(s)
+	return max.Sub(min)
 }

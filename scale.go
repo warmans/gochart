@@ -63,12 +63,16 @@ func (s *StdXScale) Offset() float64 {
 	return s.offset
 }
 
-func NewYScale(series ...Series) *StdYScale {
-	return &StdYScale{d: series}
+func NewYScale(numTicks int, series ...Series) *StdYScale {
+	return &StdYScale{
+		d:        series,
+		numTicks: 10,
+	}
 }
 
 type StdYScale struct {
-	d []Series
+	d        []Series
+	numTicks int
 }
 
 func (r *StdYScale) MinMax() (float64, float64) {
@@ -76,7 +80,7 @@ func (r *StdYScale) MinMax() (float64, float64) {
 }
 
 func (r *StdYScale) NumTicks() int {
-	return 10 //todo: should scale based on the canvas size
+	return r.numTicks //todo: should scale based on the canvas size
 }
 
 func (r *StdYScale) Labels() []Label {
@@ -93,16 +97,17 @@ func (r *StdYScale) Position(v float64, b BoundingBox) float64 {
 	return b.MapY(min, max, v)
 }
 
-func NewStackedYScale(series ...Series) YScale {
-	return &StackedYScale{d: series}
+func NewStackedYScale(numTicks int, series ...Series) YScale {
+	return &StackedYScale{d: series, numTicks: 10}
 }
 
 type StackedYScale struct {
-	d []Series
+	d        []Series
+	numTicks int
 }
 
 func (s *StackedYScale) NumTicks() int {
-	return 10
+	return s.numTicks
 }
 
 func (s *StackedYScale) Labels() []Label {

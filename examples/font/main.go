@@ -1,13 +1,14 @@
 package main
 
 import (
+	"image/color"
+	"log"
+
 	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
 	"github.com/warmans/gochart"
 	"github.com/warmans/gochart/pkg/style"
 	"golang.org/x/image/font/gofont/goregular"
-	"image/color"
-	"log"
 )
 
 const numPoints = 22
@@ -28,12 +29,12 @@ func main() {
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
-	yScale := gochart.NewYScale(series)
+	yScale := gochart.NewYScale(10, series)
 	xScale := gochart.NewXScale(series, 0)
 
 	grid := gochart.New12ColGridLayout(
 		gochart.GridRow{
-			HeightFactor: 0.95,
+			HeightPercent: 0.95,
 			Columns: []gochart.GridColumn{
 				{
 					ColSpan: 1,
@@ -56,7 +57,7 @@ func main() {
 			},
 		},
 		gochart.GridRow{
-			HeightFactor: 0.05,
+			HeightPercent: 0.05,
 			Columns: []gochart.GridColumn{
 				{ColSpan: 1},
 				{

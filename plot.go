@@ -45,6 +45,7 @@ func StackPlots(vs ...Plot) ([]Plot, YScale) {
 
 	var originalSeries []Series
 	var lastSeries Series
+	var maxYScaleTicks int
 	for k := range vs {
 		vs[k].ReplaceSeries(func(s Series) Series {
 			originalSeries = append(originalSeries, s)
@@ -53,8 +54,11 @@ func StackPlots(vs ...Plot) ([]Plot, YScale) {
 			return merged
 		})
 		stacked[(len(vs)-1)-k] = vs[k]
+		if numTicks := vs[k].YScale().NumTicks(); numTicks > maxYScaleTicks {
+			maxYScaleTicks = numTicks
+		}
 	}
-	stackedScale := NewStackedYScale(originalSeries...)
+	stackedScale := NewStackedYScale(maxYScaleTicks, originalSeries...)
 	for k := range stacked {
 		stacked[k].ReplaceYScale(func(s YScale) YScale {
 			return stackedScale
@@ -140,11 +144,10 @@ func PlotWithStyles(p Plot, opts ...style.Opt) Plot {
 
 func NewLinesPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot {
 	p := &LinesPlot{
-		Styles:    NewStyles(style.DefaultPlotOpts...),
-		yScale:    yScale,
-		xScale:    xScale,
-		s:         s,
-		pointSize: 2,
+		Styles: NewStyles(style.DefaultPlotOpts...),
+		yScale: yScale,
+		xScale: xScale,
+		s:      s,
 	}
 	for _, o := range opts {
 		o(p)
@@ -154,10 +157,9 @@ func NewLinesPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot 
 
 type LinesPlot struct {
 	Styles
-	yScale    YScale
-	xScale    XScale
-	s         Series
-	pointSize float64
+	yScale YScale
+	xScale XScale
+	s      Series
 }
 
 func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -210,7 +212,7 @@ func NewBarsPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot {
 		yScale:      yScale,
 		xScale:      xScale,
 		s:           s,
-		maxBarWidth: 20,
+		maxBarWidth: 50,
 	}
 	for _, o := range opts {
 		o(p)
@@ -274,7 +276,7 @@ func NewYGrid(yScale YScale, opts ...PlotOpt) Plot {
 
 type YGrid struct {
 	Styles
-	yScale    YScale
+	yScale YScale
 }
 
 func (g *YGrid) Render(canvas *gg.Context, b BoundingBox) error {

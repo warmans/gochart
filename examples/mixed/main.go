@@ -12,8 +12,7 @@ const numPoints = 22
 
 func main() {
 
-	series := gochart.NewXYSeries(
-		gochart.GenTestTextLabels(numPoints),
+	series := gochart.NewYSeries(
 		append(gochart.GenTestDataReversed(numPoints/2), gochart.GenTestData(numPoints/2)...),
 	)
 
@@ -31,11 +30,11 @@ func main() {
 
 	// Stacked Bar Plot
 	stackedCharts, stackedScale := gochart.StackPlots(
-		gochart.PlotWithStyles(gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series), style.Color(color.RGBA{R: 255, A: 255}), style.Dash(5)),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(series), xScale, series), )
+		gochart.PlotWithStyles(gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series), style.Color(color.RGBA{R: 255, A: 255}), style.Dash(5)),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series), )
 
 	layout := gochart.NewDynamicLayout(
 		gochart.NewYAxis(stackedScale),

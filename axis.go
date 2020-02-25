@@ -123,6 +123,7 @@ func NewXAxis(s Series, xScale XScale, opts ...XAxisOpt) *XAxis {
 		fontStyles: NewStyles(style.DefaultAxisOpts...),
 		s:          s,
 		xScale:     xScale,
+		labelAlign: 0.5,
 	}
 	for _, o := range opts {
 		o(x)
@@ -144,11 +145,22 @@ func XLineStyles(opt ...style.Opt) XAxisOpt {
 	}
 }
 
+// XLabelAlign aligns the label from left to right.
+// 0 = left
+// 0.5 = center
+// 1 = right
+func XLabelAlign(align float64) XAxisOpt {
+	return func(ax *XAxis) {
+		ax.labelAlign = align
+	}
+}
+
 type XAxis struct {
 	lineStyles Styles
 	fontStyles Styles
 	s          Series
 	xScale     XScale
+	labelAlign float64
 }
 
 func (a *XAxis) Scale() XScale {
@@ -187,7 +199,7 @@ func (a *XAxis) Render(canvas *gg.Context, b BoundingBox) error {
 			label.Value,
 			linePos,
 			b.RelY(0)+defaultTickSize,
-			0.5,
+			a.labelAlign,
 			0,
 			spacing,
 			1,
