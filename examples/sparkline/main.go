@@ -20,10 +20,6 @@ func main() {
 
 	// use a 10 tick vertical scale
 	yScale := gochart.NewYScale(10, series)
-
-	// offset the x scale by 10 to prevent the bars from overlapping the sides of the chart
-	// the offset depends on the bar width. So changing it to 50 means the offset needs to
-	// be 25.
 	xScale := gochart.NewXScale(series, 0)
 
 	plot := gochart.NewLinesPlot(

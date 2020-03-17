@@ -34,7 +34,8 @@ func main() {
 		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
 		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
 		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
-		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series), )
+		gochart.NewBarsPlot(gochart.NewYScale(10, series), xScale, series),
+	)
 
 	layout := gochart.NewDynamicLayout(
 		gochart.NewYAxis(stackedScale),
