@@ -2,6 +2,8 @@
 
 Experimental pure go chart library for generating static charts.
 
+WASM Demo: https://warmans.github.io/gochart/demo/
+
 #### Barchart
 
 ![](examples/barchart/example.png)

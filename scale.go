@@ -66,7 +66,7 @@ func (s *StdXScale) Offset() float64 {
 func NewYScale(numTicks int, series ...Series) *StdYScale {
 	return &StdYScale{
 		d:        series,
-		numTicks: 10,
+		numTicks: numTicks,
 	}
 }
 

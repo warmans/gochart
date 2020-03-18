@@ -88,10 +88,10 @@ func timeRange(v []time.Time) (time.Time, time.Time) {
 
 func BoundingBoxFromCanvas(ctx *gg.Context) BoundingBox {
 	return BoundingBox{
-		X: 20,
-		Y: 20,
-		W: float64(ctx.Width()) - 40,
-		H: float64(ctx.Height()) - 40,
+		X: 10,
+		Y: 10,
+		W: float64(ctx.Width()) - 20,
+		H: float64(ctx.Height()) - 20,
 	}
 }
 
