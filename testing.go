@@ -1,7 +1,9 @@
 package gochart
 
 import (
+	"fmt"
 	"math"
+	"math/rand"
 	"time"
 
 	"github.com/Pallinder/go-randomdata"
@@ -11,6 +13,14 @@ func GenTestData(num int) []float64 {
 	values := make([]float64, num)
 	for i := 0; i < num; i++ {
 		values[i] = float64(i) * float64(i)
+	}
+	return values
+}
+
+func GenRandomTestData(num int, max float64) []float64 {
+	values := make([]float64, num)
+	for i := 0; i < num; i++ {
+		values[i] = rand.Float64() * max
 	}
 	return values
 }
@@ -47,6 +57,21 @@ func GenTestTextLabels(num int) []string {
 	labels := make([]string, num)
 	for i := 0; i < num; i++ {
 		labels[i] = randomdata.City()
+	}
+	return labels
+}
+
+func GenTestEpisodeLabels(num int) []string {
+	labels := make([]string, num)
+	series := 1
+	episode := 1
+	for i := 0; i < num; i++ {
+		labels[i] = fmt.Sprintf("S%02dE%02d", series, episode)
+		if episode > 12 {
+			series++
+			episode = 0
+		}
+		episode++
 	}
 	return labels
 }
