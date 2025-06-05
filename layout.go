@@ -49,27 +49,25 @@ func (b BoundingBox) DebugRender(canvas *gg.Context) {
 	canvas.Stroke()
 }
 
-func NewDynamicLayout(yAxis *YAxis, xAxis *XAxis, charts ...Plot) *DynamicLayout {
+func NewDynamicLayout(yAxis YAxis, xAxis XAxis, charts ...Plot) *DynamicLayout {
 	return &DynamicLayout{charts: charts, yAxis: yAxis, xAxis: xAxis}
 }
 
 // DynamicLayout will calculate size of axis based on the given data.
 type DynamicLayout struct {
 	charts []Plot
-	yAxis  *YAxis
-	xAxis  *XAxis
+	yAxis  YAxis
+	xAxis  XAxis
 }
 
 func (l *DynamicLayout) Render(canvas *gg.Context, container BoundingBox) error {
 
 	//container.DebugRender(canvas)
 
-	//todo multiple X axis
-	_, maxXLabelH := widestLabelSize(canvas, l.xAxis.Scale().Labels())
 	maxYLabelW, _ := widestLabelSize(canvas, l.yAxis.Scale().Labels())
 
 	yAxisWidth := maxYLabelW + defaultMargin
-	xAxisHeight := maxXLabelH + defaultMargin
+	xAxisHeight := l.xAxis.Height(canvas)
 
 	chartPosition := BoundingBox{
 		X: container.RelX(0) + yAxisWidth,

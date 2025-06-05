@@ -42,18 +42,18 @@ func main() {
 		gochart.GridRow{
 			HeightPercent: 0.95,
 			Columns: []gochart.GridColumn{
-				{ColSpan: 1, El: gochart.NewYAxis(stackedScale)},
+				{ColSpan: 1, El: gochart.NewStdYAxis(stackedScale)},
 				{ColSpan: 10, El: gochart.NewCompositePlot(
 					append([]gochart.Plot{gochart.NewYGrid(stackedScale)}, append(stackedCharts, linePlot)...)...),
 				},
-				{ColSpan: 1, El: gochart.NewYAxis(rightScale, gochart.MirrorYAxis())},
+				{ColSpan: 1, El: gochart.NewStdYAxis(rightScale, gochart.MirrorYStdAxis())},
 			},
 		},
 		gochart.GridRow{
 			HeightPercent: 0.05,
 			Columns: []gochart.GridColumn{
 				{ColSpan: 1},
-				{ColSpan: 10, El: gochart.NewXAxis(series, xScale)},
+				{ColSpan: 10, El: gochart.NewStdXAxis(series, xScale)},
 				{ColSpan: 1},
 			},
 		},

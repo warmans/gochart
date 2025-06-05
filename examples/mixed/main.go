@@ -38,8 +38,8 @@ func main() {
 	)
 
 	layout := gochart.NewDynamicLayout(
-		gochart.NewYAxis(stackedScale),
-		gochart.NewXAxis(series, xScale),
+		gochart.NewStdYAxis(stackedScale),
+		gochart.NewStdXAxis(series, xScale),
 		append(
 			// Background grid lines
 			[]gochart.Plot{gochart.NewYGrid(stackedScale)},
@@ -57,7 +57,7 @@ func main() {
 					style.Color(color.RGBA{B: 255, A: 255})),
 				),
 			)...,
-		)...
+		)...,
 	)
 
 	layout.Render(canvas, gochart.BoundingBoxFromCanvas(canvas))

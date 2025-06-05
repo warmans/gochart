@@ -30,7 +30,7 @@ type Data struct {
 	ChartWidth  string
 	ChartHeight string
 
-	YTicks string
+	YTicks  string
 	XOffset string
 }
 
@@ -51,7 +51,7 @@ func main() {
 		ChartWidth:  "800",
 		ChartHeight: "400",
 
-		YTicks: "10",
+		YTicks:  "10",
 		XOffset: "10",
 	}
 
@@ -140,7 +140,7 @@ func renderDataURL(cfg *Data) string {
 	if cfg.ShowLeftAxis == "true" {
 		topRowCols = append(
 			topRowCols,
-			gochart.GridColumn{ColSpan: 1, El: gochart.NewYAxis(leftScale)},
+			gochart.GridColumn{ColSpan: 1, El: gochart.NewStdYAxis(leftScale)},
 		)
 		//empty column to offset the axis
 		bottomRowCols = append(bottomRowCols, gochart.GridColumn{ColSpan: 1})
@@ -157,14 +157,14 @@ func renderDataURL(cfg *Data) string {
 		bottomRowCols,
 		gochart.GridColumn{
 			ColSpan: 10 + countFalse(cfg.ShowLeftAxis, cfg.ShowRightAxis),
-			El:      gochart.NewXAxis(series, xScale),
+			El:      gochart.NewStdXAxis(series, xScale),
 		},
 	)
 
 	if cfg.ShowRightAxis == "true" {
 		topRowCols = append(
 			topRowCols,
-			gochart.GridColumn{ColSpan: 1, El: gochart.NewYAxis(leftScale, gochart.MirrorYAxis())},
+			gochart.GridColumn{ColSpan: 1, El: gochart.NewStdYAxis(leftScale, gochart.MirrorYStdAxis())},
 		)
 		bottomRowCols = append(bottomRowCols, gochart.GridColumn{ColSpan: 1})
 	}

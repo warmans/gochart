@@ -32,14 +32,6 @@ func PlotPointSize(size float64) PlotOpt {
 	}
 }
 
-func PlotBarMaxWidth(width float64) PlotOpt {
-	return func(p Plot) {
-		if bars, ok := p.(*BarsPlot); ok {
-			bars.maxBarWidth = width
-		}
-	}
-}
-
 func StackPlots(vs ...Plot) ([]Plot, YScale) {
 	stacked := make([]Plot, len(vs))
 
@@ -113,9 +105,11 @@ func (c *PointsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 
 	c.styleOpts.Apply(canvas)
 
+	tickWidth := b.W/float64(len(c.s.Ys())) - defaultMargin
+
 	for i, v := range c.s.Ys() {
 		canvas.DrawCircle(
-			c.xScale.Position(i, b),
+			c.xScale.Position(i, b)+tickWidth/2,
 			c.yScale.Position(v, b),
 			c.pointSize,
 		)
@@ -171,6 +165,8 @@ func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
 
 	points := c.s.Ys()
 
+	tickWidth := b.W/float64(len(points)) - defaultMargin
+
 	previousPoint := 0.0
 	for i, v := range points {
 
@@ -181,9 +177,9 @@ func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
 		}
 
 		canvas.DrawLine(
-			c.xScale.Position(i, b),
+			c.xScale.Position(i, b)+tickWidth/2,
 			c.yScale.Position(v, b),
-			c.xScale.Position(i-1, b),
+			c.xScale.Position(i-1, b)+tickWidth/2,
 			c.yScale.Position(previousPoint, b),
 		)
 		canvas.Stroke()
@@ -206,13 +202,12 @@ func (c *LinesPlot) YScale() YScale {
 	return c.yScale
 }
 
-func NewBarsPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot {
+func NewBarsPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) *BarsPlot {
 	p := &BarsPlot{
-		Styles:      NewStyles(style.DefaultPlotOpts...),
-		yScale:      yScale,
-		xScale:      xScale,
-		s:           s,
-		maxBarWidth: 50,
+		Styles: NewStyles(style.DefaultPlotOpts...),
+		yScale: yScale,
+		xScale: xScale,
+		s:      s,
 	}
 	for _, o := range opts {
 		o(p)
@@ -222,10 +217,10 @@ func NewBarsPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot {
 
 type BarsPlot struct {
 	Styles
-	yScale      YScale
-	xScale      XScale
-	s           Series
-	maxBarWidth float64
+	yScale  YScale
+	xScale  XScale
+	s       Series
+	styleFn func(v float64) style.Opts
 }
 
 func (c *BarsPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -235,18 +230,23 @@ func (c *BarsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 
 	c.styleOpts.Apply(canvas)
 
-	maxBarWidth := math.Max(math.Min(b.W/float64(c.xScale.NumTicks()), c.maxBarWidth)-defaultMargin, 1)
+	maxBarWidth := math.Max(b.W/float64(c.xScale.NumTicks())-defaultMargin, 1)
 
 	for i, v := range c.s.Ys() {
+		canvas.Push()
+		if c.styleFn != nil {
+			c.styleFn(v).Apply(canvas)
+		}
 		canvas.DrawRectangle(
-			c.xScale.Position(i, b)-maxBarWidth/2,
+			c.xScale.Position(i, b),
 			b.RelY(b.H),
 			maxBarWidth,
 			0-(c.yScale.Position(0, b)-c.yScale.Position(v, b)),
 		)
+		canvas.Fill()
+		canvas.Stroke()
+		canvas.Pop()
 	}
-	canvas.Fill()
-	canvas.Stroke()
 
 	return nil
 }
@@ -261,6 +261,10 @@ func (c *BarsPlot) ReplaceYScale(fn func(s YScale) YScale) {
 
 func (c *BarsPlot) YScale() YScale {
 	return c.yScale
+}
+
+func (c *BarsPlot) SetStyleFn(f func(v float64) style.Opts) {
+	c.styleFn = f
 }
 
 func NewYGrid(yScale YScale, opts ...PlotOpt) Plot {

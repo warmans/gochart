@@ -5,36 +5,47 @@ import (
 	"github.com/warmans/gochart/pkg/style"
 )
 
-func MirrorYAxis() YAxisOpt {
-	return func(ax *YAxis) {
+type XAxis interface {
+	Scale() XScale
+	Render(canvas *gg.Context, b BoundingBox) error
+	Height(canvas *gg.Context) float64
+}
+
+type YAxis interface {
+	Scale() YScale
+	Render(canvas *gg.Context, b BoundingBox) error
+}
+
+func MirrorYStdAxis() YStdAxisOpt {
+	return func(ax *YStdAxis) {
 		ax.cfg.Mirrored = true
 	}
 }
 
-func YFontStyles(opt ...style.Opt) YAxisOpt {
-	return func(ax *YAxis) {
+func YFontStyles(opt ...style.Opt) YStdAxisOpt {
+	return func(ax *YStdAxis) {
 		ax.fontStyles.SetStyle(opt...)
 	}
 }
 
-func YLineStyles(opt ...style.Opt) YAxisOpt {
-	return func(ax *YAxis) {
+func YLineStyles(opt ...style.Opt) YStdAxisOpt {
+	return func(ax *YStdAxis) {
 		ax.lineStyles.SetStyle(opt...)
 	}
 }
 
-type YAxisOpt func(ax *YAxis)
+type YStdAxisOpt func(ax *YStdAxis)
 
-type YAxisConfig struct {
+type YStdAxisConfig struct {
 	Mirrored bool
 }
 
-func NewYAxis(scale YScale, opts ...YAxisOpt) *YAxis {
-	y := &YAxis{
+func NewStdYAxis(scale YScale, opts ...YStdAxisOpt) *YStdAxis {
+	y := &YStdAxis{
 		lineStyles: NewStyles(style.DefaultAxisOpts...),
 		fontStyles: NewStyles(style.DefaultAxisOpts...),
 		scale:      scale,
-		cfg:        &YAxisConfig{},
+		cfg:        &YStdAxisConfig{},
 	}
 	for _, opt := range opts {
 		opt(y)
@@ -42,18 +53,18 @@ func NewYAxis(scale YScale, opts ...YAxisOpt) *YAxis {
 	return y
 }
 
-type YAxis struct {
+type YStdAxis struct {
 	lineStyles Styles
 	fontStyles Styles
 	scale      YScale
-	cfg        *YAxisConfig
+	cfg        *YStdAxisConfig
 }
 
-func (a *YAxis) Scale() YScale {
+func (a *YStdAxis) Scale() YScale {
 	return a.scale
 }
 
-func (a *YAxis) Render(canvas *gg.Context, b BoundingBox) error {
+func (a *YStdAxis) Render(canvas *gg.Context, b BoundingBox) error {
 
 	canvas.Push()
 	defer canvas.Pop()
@@ -117,8 +128,8 @@ func (a *YAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	return nil
 }
 
-func NewXAxis(s Series, xScale XScale, opts ...XAxisOpt) *XAxis {
-	x := &XAxis{
+func NewStdXAxis(s Series, xScale XScale, opts ...XAxisOpt) *XStdAxis {
+	x := &XStdAxis{
 		lineStyles: NewStyles(style.DefaultAxisOpts...),
 		fontStyles: NewStyles(style.DefaultAxisOpts...),
 		s:          s,
@@ -131,16 +142,16 @@ func NewXAxis(s Series, xScale XScale, opts ...XAxisOpt) *XAxis {
 	return x
 }
 
-type XAxisOpt func(ax *XAxis)
+type XAxisOpt func(ax *XStdAxis)
 
 func XFontStyles(opt ...style.Opt) XAxisOpt {
-	return func(ax *XAxis) {
+	return func(ax *XStdAxis) {
 		ax.fontStyles.SetStyle(opt...)
 	}
 }
 
 func XLineStyles(opt ...style.Opt) XAxisOpt {
-	return func(ax *XAxis) {
+	return func(ax *XStdAxis) {
 		ax.lineStyles.SetStyle(opt...)
 	}
 }
@@ -150,12 +161,12 @@ func XLineStyles(opt ...style.Opt) XAxisOpt {
 // 0.5 = center
 // 1 = right
 func XLabelAlign(align float64) XAxisOpt {
-	return func(ax *XAxis) {
+	return func(ax *XStdAxis) {
 		ax.labelAlign = align
 	}
 }
 
-type XAxis struct {
+type XStdAxis struct {
 	lineStyles Styles
 	fontStyles Styles
 	s          Series
@@ -163,11 +174,15 @@ type XAxis struct {
 	labelAlign float64
 }
 
-func (a *XAxis) Scale() XScale {
+func (a *XStdAxis) Scale() XScale {
 	return a.xScale
 }
 
-func (a *XAxis) Render(canvas *gg.Context, b BoundingBox) error {
+func (a *XStdAxis) Height(canvas *gg.Context) float64 {
+	return canvas.FontHeight() + defaultMargin
+}
+
+func (a *XStdAxis) Render(canvas *gg.Context, b BoundingBox) error {
 
 	canvas.Push()
 	defer canvas.Pop()
@@ -181,9 +196,11 @@ func (a *XAxis) Render(canvas *gg.Context, b BoundingBox) error {
 	totalLabelsWidth := totalLabelsWidth(canvas, labels, defaultMargin*2)
 	spacing := totalLabelsWidth / float64(len(labels))
 
+	tickWidth := (b.W / float64(a.xScale.NumTicks())) - defaultMargin
+
 	for _, label := range labels {
 
-		linePos := a.xScale.Position(label.Tick, b)
+		linePos := a.xScale.Position(label.Tick, b) + tickWidth/2
 
 		canvas.DrawLine(
 			linePos,
@@ -204,6 +221,108 @@ func (a *XAxis) Render(canvas *gg.Context, b BoundingBox) error {
 			spacing,
 			1,
 			gg.AlignCenter,
+		)
+		canvas.Pop()
+	}
+
+	canvas.Stroke()
+
+	return nil
+}
+
+type XAxisCompactOpt func(ax *XAxisCompact)
+
+func XCompactFontStyles(opt ...style.Opt) XAxisCompactOpt {
+	return func(ax *XAxisCompact) {
+		ax.fontStyles.SetStyle(opt...)
+	}
+}
+
+func NewCompactXAxis(s Series, xScale XScale, opts ...XAxisCompactOpt) *XAxisCompact {
+	x := &XAxisCompact{
+		lineStyles: NewStyles(style.DefaultAxisOpts...),
+		fontStyles: NewStyles(style.DefaultAxisOpts...),
+		s:          s,
+		xScale:     xScale,
+		labelAlign: 0,
+	}
+	for _, o := range opts {
+		o(x)
+	}
+	return x
+}
+
+type XAxisCompact struct {
+	lineStyles Styles
+	fontStyles Styles
+	s          Series
+	xScale     XScale
+	labelAlign float64
+}
+
+func (a *XAxisCompact) Scale() XScale {
+	return a.xScale
+}
+
+func (a *XAxisCompact) Height(canvas *gg.Context) float64 {
+	canvas.Push()
+	defer canvas.Pop()
+
+	// need to apply the font styles to accurately measure the string
+	if a.fontStyles.styleOpts != nil {
+		a.fontStyles.styleOpts.Apply(canvas)
+	}
+	longest := 0.0
+	for _, v := range a.s.Xs() {
+		newLen, _ := canvas.MeasureString(v)
+		if newLen > longest {
+			longest = newLen
+		}
+	}
+
+	return longest + defaultMargin
+}
+
+func (a *XAxisCompact) Render(canvas *gg.Context, b BoundingBox) error {
+
+	canvas.Push()
+	defer canvas.Pop()
+
+	a.lineStyles.styleOpts.Apply(canvas)
+
+	// horizontal line
+	canvas.DrawLine(b.RelX(0), b.RelY(0), b.RelX(b.W), b.RelY(0))
+
+	labels := a.xScale.Labels()
+
+	tickWidth := (b.W / float64(a.xScale.NumTicks())) - defaultMargin
+
+	for _, label := range labels {
+
+		linePos := a.xScale.Position(label.Tick, b) + tickWidth/2
+
+		canvas.DrawLine(
+			linePos,
+			b.RelY(0),
+			linePos,
+			b.RelY(0)+defaultTickSize,
+		)
+
+		canvas.Push()
+		a.fontStyles.styleOpts.Apply(canvas)
+
+		canvas.RotateAbout(
+			45,
+			linePos-10,
+			b.RelY(0),
+		)
+
+		canvas.DrawStringAnchored(
+			label.Value,
+			linePos,
+			b.RelY(0)+defaultTickSize,
+			0,
+			0,
 		)
 		canvas.Pop()
 	}

@@ -38,7 +38,7 @@ func main() {
 			Columns: []gochart.GridColumn{
 				{
 					ColSpan: 1,
-					El: gochart.NewYAxis(
+					El: gochart.NewStdYAxis(
 						yScale,
 						gochart.YFontStyles(
 							style.FontFace(face),
@@ -62,7 +62,7 @@ func main() {
 				{ColSpan: 1},
 				{
 					ColSpan: 11,
-					El: gochart.NewXAxis(
+					El: gochart.NewStdXAxis(
 						series,
 						xScale,
 						gochart.XFontStyles(

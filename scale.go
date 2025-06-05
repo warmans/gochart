@@ -54,7 +54,7 @@ func (s *StdXScale) Position(i int, b BoundingBox) float64 {
 	// the actual size available is the total width with the margins removed.
 	finalScaleWidth := b.W - (s.offset * 2)
 
-	normalizedPosition := normalizeToRange(float64(i), 0, float64(s.NumTicks()-1), 0, finalScaleWidth)
+	normalizedPosition := normalizeToRange(float64(i), 0, float64(s.NumTicks()), 0, finalScaleWidth)
 
 	return b.RelX(normalizedPosition) + s.offset
 }
