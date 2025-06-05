@@ -65,7 +65,6 @@ func (a *YStdAxis) Scale() YScale {
 }
 
 func (a *YStdAxis) Render(canvas *gg.Context, b BoundingBox) error {
-
 	canvas.Push()
 	defer canvas.Pop()
 
@@ -284,7 +283,6 @@ func (a *XAxisCompact) Height(canvas *gg.Context) float64 {
 }
 
 func (a *XAxisCompact) Render(canvas *gg.Context, b BoundingBox) error {
-
 	canvas.Push()
 	defer canvas.Pop()
 

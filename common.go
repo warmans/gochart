@@ -31,10 +31,10 @@ func (a *Styles) SetStyle(opt ...style.Opt) {
 // slices.
 func floatsRange(vv [][]float64) (float64, float64) {
 	overallMax := 0.0
-	overallMin := math.MaxFloat64
+	overallMin := -1.0
 	for _, v := range vv {
 		min, max := floatRange(v)
-		if min < overallMin {
+		if overallMin == -1 || min < overallMin {
 			overallMin = min
 		}
 		if max > overallMax {
@@ -60,26 +60,26 @@ func additiveFloatMerge(slices [][]float64) []float64 {
 
 func floatRange(v []float64) (float64, float64) {
 	max := 0.0
-	min := math.MaxFloat64
+	min := -1.0
 	for _, v := range v {
 		if v > max {
 			max = v
 		}
-		if v < min {
+		if min == -1 || v < min {
 			min = v
 		}
 	}
-	return min, max
+	return math.Max(min, 0), max
 }
 
 func timeRange(v []time.Time) (time.Time, time.Time) {
 	max := time.Time{}
-	min := time.Unix(math.MaxInt32, 0) //2038 :(
+	min := time.Time{}
 	for _, v := range v {
 		if v.After(max) {
 			max = v
 		}
-		if v.Before(min) {
+		if min.IsZero() || v.Before(min) {
 			min = v
 		}
 	}

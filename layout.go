@@ -3,6 +3,7 @@ package gochart
 import (
 	"fmt"
 	"image/color"
+	"math"
 
 	"github.com/fogleman/gg"
 )
@@ -20,12 +21,14 @@ func (b BoundingBox) MapX(min, max, value float64) float64 {
 	return normalizeToRange(value, min, max, b.RelX(0), b.W+b.X) //todo: is +X needed?
 }
 
-// MapY takes the given min/max and maps them to the box then returns the valu Ye position within that scale.
+// MapY takes the given min/max and maps them to the box then returns the value Y position within that scale.
 // E.g. val:2 min:1 max: 3 of a 100x100 box will return 50
 func (b BoundingBox) MapY(min, max, value float64) float64 {
 	//todo: min value must be zero'd otherwise it pushes the scale off the chart.
 	// this is a bug probably in normalizeToRange :/
-	return b.RelY(b.H) - normalizeToRange(value, 0, max, 0, b.H)
+
+	// using a valMax of 0 will create an infinite loop somewhere.
+	return b.RelY(b.H) - normalizeToRange(value, 0, math.Max(max, 1), 0, b.H)
 }
 
 // RelX is the relative position within the canvas i.e. 0 is the far left of the box, not the far left

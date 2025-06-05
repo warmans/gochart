@@ -1,15 +1,13 @@
 package main
 
 import (
+	"github.com/fogleman/gg"
 	"github.com/golang/freetype/truetype"
+	"github.com/warmans/gochart"
 	"github.com/warmans/gochart/pkg/style"
 	"golang.org/x/image/font/gofont/goregular"
 	"image/color"
 	"log"
-	"math/rand/v2"
-
-	"github.com/fogleman/gg"
-	"github.com/warmans/gochart"
 )
 
 func main() {
@@ -21,12 +19,12 @@ func main() {
 
 	face := truetype.NewFace(font, &truetype.Options{Size: 10})
 
-	canvas := gg.NewContext(1400, 600)
+	canvas := gg.NewContext(2000, 600)
 	canvas.SetColor(color.White)
 	canvas.DrawRectangle(0, 0, float64(canvas.Width()), float64(canvas.Height()))
 	canvas.Fill()
 
-	numPoints := rand.IntN(100)
+	numPoints := 150 //rand.IntN(150)
 
 	series := gochart.NewXYSeries(
 		gochart.GenTestEpisodeLabels(numPoints),
