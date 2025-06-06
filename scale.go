@@ -129,3 +129,36 @@ func (s *StackedYScale) Position(v float64, b BoundingBox) float64 {
 	min, max := s.MinMax()
 	return b.MapY(min, max, v)
 }
+
+func NewFixedYScale(numTicks int, maxValue float64) *FixedYScale {
+	return &FixedYScale{
+		numTicks: numTicks,
+		fixedMax: maxValue,
+	}
+}
+
+type FixedYScale struct {
+	numTicks int
+	fixedMax float64
+}
+
+func (r *FixedYScale) MinMax() (float64, float64) {
+	return 0, r.fixedMax
+}
+
+func (r *FixedYScale) NumTicks() int {
+	return r.numTicks //todo: should scale based on the canvas size
+}
+
+func (r *FixedYScale) Labels() []Label {
+	labels := make([]Label, r.NumTicks()+1)
+	for i := 0; i <= r.NumTicks(); i++ {
+		labels[i] = Label{fmt.Sprintf("%0.2f", (r.fixedMax/float64(r.NumTicks()))*float64(i)), i}
+	}
+	return labels
+}
+
+func (r *FixedYScale) Position(v float64, b BoundingBox) float64 {
+	min, max := r.MinMax()
+	return b.MapY(min, max, v)
+}

@@ -31,7 +31,7 @@ func main() {
 		gochart.GenRandomTestData(numPoints, 5),
 	)
 
-	yScale := gochart.NewYScale(5, series)
+	yScale := gochart.NewFixedYScale(5, 5)
 	xScale := gochart.NewXScale(series, 0)
 
 	bars := gochart.NewBarsPlot(yScale, xScale, series, gochart.PlotPointSize(2), gochart.PlotStyle(
@@ -39,7 +39,7 @@ func main() {
 	)
 
 	bars.SetStyleFn(func(v float64) style.Opts {
-		if v < 1 {
+		if v <= 1 {
 			return style.Opts{style.Color(color.RGBA{R: 220, A: 255})}
 		}
 		if v > 1 && v < 3 {
