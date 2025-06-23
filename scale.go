@@ -21,6 +21,44 @@ type YScale interface {
 	Position(v float64, b BoundingBox) float64
 }
 
+func NewXScaleFromLabels(labels []string) *LabelXScale {
+	return &LabelXScale{labels: labels}
+}
+
+type LabelXScale struct {
+	labels []string
+}
+
+func (l *LabelXScale) NumTicks() int {
+	return len(l.labels)
+}
+
+func (l *LabelXScale) Labels() []Label {
+	labels := make([]Label, len(l.labels))
+	for k, v := range l.labels {
+		labels[k] = Label{Tick: k, Value: v}
+	}
+	return labels
+}
+
+func (l *LabelXScale) Position(i int, b BoundingBox) float64 {
+	if i > l.NumTicks() {
+		return b.RelX(b.W)
+	}
+
+	// the actual size available is the total width with the margins removed.
+	finalScaleWidth := b.W
+
+	normalizedPosition := normalizeToRange(float64(i), 0, float64(l.NumTicks()), 0, finalScaleWidth)
+
+	return b.RelX(normalizedPosition)
+}
+
+func (l *LabelXScale) Offset() float64 {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewXScale(series Series, offset float64) *StdXScale {
 	return &StdXScale{series: series, offset: offset}
 }
