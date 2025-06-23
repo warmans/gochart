@@ -32,6 +32,28 @@ func PlotPointSize(size float64) PlotOpt {
 	}
 }
 
+func PlotStyleFn(fn func(v float64) style.Opts) PlotOpt {
+	return func(p Plot) {
+		if points, ok := p.(*PointsPlot); ok {
+			points.styleFn = fn
+		}
+		if bars, ok := p.(*BarsPlot); ok {
+			bars.styleFn = fn
+		}
+		if lines, ok := p.(*LinesPlot); ok {
+			lines.styleFn = fn
+		}
+	}
+}
+
+func PointSizeFn(fn func(v float64, x Label) float64) PlotOpt {
+	return func(p Plot) {
+		if points, ok := p.(*PointsPlot); ok {
+			points.sizeFn = fn
+		}
+	}
+}
+
 func StackPlots(vs ...Plot) ([]Plot, YScale) {
 	stacked := make([]Plot, len(vs))
 
@@ -96,6 +118,8 @@ type PointsPlot struct {
 	pointSize float64
 	yScale    YScale
 	xScale    XScale
+	styleFn   func(v float64) style.Opts
+	sizeFn    func(v float64, x Label) float64
 }
 
 func (c *PointsPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -108,13 +132,22 @@ func (c *PointsPlot) Render(canvas *gg.Context, b BoundingBox) error {
 	tickWidth := b.W/float64(len(c.s.Ys())) - defaultMargin
 
 	for i, v := range c.s.Ys() {
+		canvas.Push()
+		if c.styleFn != nil {
+			c.styleFn(v).Apply(canvas)
+		}
+		size := c.pointSize
+		if c.sizeFn != nil {
+			size = c.sizeFn(v, c.xScale.Labels()[i])
+		}
 		canvas.DrawCircle(
 			c.xScale.Position(i, b)+tickWidth/2,
 			c.yScale.Position(v, b),
-			c.pointSize,
+			size,
 		)
+		canvas.Fill()
+		canvas.Pop()
 	}
-	canvas.Fill()
 
 	return nil
 }
@@ -151,9 +184,10 @@ func NewLinesPlot(yScale YScale, xScale XScale, s Series, opts ...PlotOpt) Plot 
 
 type LinesPlot struct {
 	Styles
-	yScale YScale
-	xScale XScale
-	s      Series
+	yScale  YScale
+	xScale  XScale
+	s       Series
+	styleFn func(v float64) style.Opts
 }
 
 func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
@@ -175,7 +209,10 @@ func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
 			previousPoint = v
 			continue
 		}
-
+		canvas.Push()
+		if c.styleFn != nil {
+			c.styleFn(v).Apply(canvas)
+		}
 		canvas.DrawLine(
 			c.xScale.Position(i, b)+tickWidth/2,
 			c.yScale.Position(v, b),
@@ -183,6 +220,7 @@ func (c *LinesPlot) Render(canvas *gg.Context, b BoundingBox) error {
 			c.yScale.Position(previousPoint, b),
 		)
 		canvas.Stroke()
+		canvas.Pop()
 
 		previousPoint = v
 	}
@@ -261,10 +299,6 @@ func (c *BarsPlot) ReplaceYScale(fn func(s YScale) YScale) {
 
 func (c *BarsPlot) YScale() YScale {
 	return c.yScale
-}
-
-func (c *BarsPlot) SetStyleFn(f func(v float64) style.Opts) {
-	c.styleFn = f
 }
 
 func NewYGrid(yScale YScale, opts ...PlotOpt) Plot {

@@ -237,12 +237,13 @@ func XCompactFontStyles(opt ...style.Opt) XAxisCompactOpt {
 	}
 }
 
-func NewCompactXAxis(xScale XScale, opts ...XAxisCompactOpt) *XAxisCompact {
+func NewCompactXAxis(labels []string, xScale XScale, opts ...XAxisCompactOpt) *XAxisCompact {
 	x := &XAxisCompact{
 		lineStyles: NewStyles(style.DefaultAxisOpts...),
 		fontStyles: NewStyles(style.DefaultAxisOpts...),
 		xScale:     xScale,
 		labelAlign: 0,
+		labels:     labels,
 	}
 	for _, o := range opts {
 		o(x)
@@ -253,7 +254,7 @@ func NewCompactXAxis(xScale XScale, opts ...XAxisCompactOpt) *XAxisCompact {
 type XAxisCompact struct {
 	lineStyles Styles
 	fontStyles Styles
-	s          Series
+	labels     []string
 	xScale     XScale
 	labelAlign float64
 }
@@ -271,7 +272,7 @@ func (a *XAxisCompact) Height(canvas *gg.Context) float64 {
 		a.fontStyles.styleOpts.Apply(canvas)
 	}
 	longest := 0.0
-	for _, v := range a.s.Xs() {
+	for _, v := range a.labels {
 		newLen, _ := canvas.MeasureString(v)
 		if newLen > longest {
 			longest = newLen
