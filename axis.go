@@ -237,11 +237,10 @@ func XCompactFontStyles(opt ...style.Opt) XAxisCompactOpt {
 	}
 }
 
-func NewCompactXAxis(s Series, xScale XScale, opts ...XAxisCompactOpt) *XAxisCompact {
+func NewCompactXAxis(xScale XScale, opts ...XAxisCompactOpt) *XAxisCompact {
 	x := &XAxisCompact{
 		lineStyles: NewStyles(style.DefaultAxisOpts...),
 		fontStyles: NewStyles(style.DefaultAxisOpts...),
-		s:          s,
 		xScale:     xScale,
 		labelAlign: 0,
 	}
